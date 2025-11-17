@@ -38,12 +38,12 @@ def main():
         weights,
         on=["FAO Area", "ASFIS Scientific Name"],
     )
-    stock_landings = stock_landings.rename(columns={2021: "Species Landings 2021"})
+    stock_landings = stock_landings.rename(columns={2023: "Species Landings 2023"})
     cols_to_keep = [
         "FAO Area",
         "ASFIS Scientific Name",
         "Location",
-        "Species Landings 2021",
+        "Species Landings 2023",
         "Normalized Weight",
     ]
     stock_landings = stock_landings[cols_to_keep]
@@ -51,7 +51,7 @@ def main():
     # Add Num Stocks column for computing landings
     stock_landings = compute_num_stocks(stock_landings)
 
-    stock_landings["Stock Landings 2021"] = stock_landings.apply(
+    stock_landings["Stock Landings 2023"] = stock_landings.apply(
         compute_landings, axis=1
     )
     # stock_landings = stock_landings.drop(columns="Num Stocks")
@@ -98,7 +98,7 @@ def main():
         "FAO Area",
         "ASFIS Scientific Name",
         "Location",
-        "Stock Landings 2021",
+        "Stock Landings 2023",
     ]
     stock_landings = stock_landings[cols_to_save]
 

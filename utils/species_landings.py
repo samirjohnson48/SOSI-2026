@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 
 
-def format_fishstat(fishstat, code_to_scientific=[], year_start=1950, year_end=2022):
+def format_fishstat(fishstat, code_to_scientific=[], year_start=1950, year_end=2023):
     fishstat = fishstat.drop(columns=["Unit"])
 
     rename_dict = {f"[{year}]": year for year in range(year_start, year_end + 1)}
@@ -50,7 +50,7 @@ def compute_species_landings(
     fishstat,
     mult_sns=[],
     year_start=1950,
-    year_end=2021,
+    year_end=2023,
     key="ASFIS Scientific Name",
 ):
     scientific_name, area = row[key], row["FAO Area"]

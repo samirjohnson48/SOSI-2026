@@ -46,7 +46,7 @@ def main():
     fishstat = fishstat.dropna(subset="Alpha3_Code")
 
     # Set variables for the first and last year of data to be used
-    first_year, last_year = 1950, 2021
+    first_year, last_year = 1950, 2023
     years = list(range(first_year, last_year + 1))
 
     # Define list of ISSCAAP codes to be removed from capture data

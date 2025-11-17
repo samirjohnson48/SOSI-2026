@@ -6,6 +6,8 @@ import pandas as pd
 import numpy as np
 import re
 
+YEAR = 2023
+
 
 def compute_num_stocks(stock_landings, group_key=["FAO Area", "ASFIS Scientific Name"]):
     sl = stock_landings.copy()
@@ -15,7 +17,7 @@ def compute_num_stocks(stock_landings, group_key=["FAO Area", "ASFIS Scientific 
 
 
 def compute_landings(
-    row, species_landings="Species Landings 2021", weight="Normalized Weight"
+    row, species_landings=f"Species Landings {YEAR}", weight="Normalized Weight"
 ):
     if pd.notna(row[species_landings]) and pd.notna(row[weight]):
         return row[species_landings] * row[weight]
@@ -29,7 +31,7 @@ def use_proxy_landings(
     stock_landings,
     proxy_landings,
     primary_key=["ASFIS Scientific Name", "Location"],
-    landings_key="Stock Landings 2021",
+    landings_key=f"Stock Landings {YEAR}",
     proxy_landings_key="Proxy Stock Landings",
     proxy_species_key="Proxy Species",
 ):
@@ -67,7 +69,7 @@ def compute_missing_species_landings(
 
     factor_dict = {}
 
-    spl_grouped = species_landings.groupby("FAO Area")[2021]
+    spl_grouped = species_landings.groupby("FAO Area")[YEAR]
 
     for name, group in spl_grouped:
         no_l_mask = group.isna() | (group == 0)
@@ -112,24 +114,24 @@ def compute_missing_species_landings(
         )  # Rows reported in area which are in method
 
         landings_col1 = f"ASFIS {level} Landings"
-        landings_col2 = 2021
+        landings_col2 = YEAR
 
         spl.loc[mask1, landings_col1] *= mlr
         spl.loc[mask2, landings_col2] *= 1 - mlr
 
     miss_mask = spl["_merge"] == "both"
 
-    spl[2021] = spl[2021].fillna(0)
+    spl[YEAR] = spl[YEAR].fillna(0)
 
     for level in ["genus", "family", "order", "Class or Phylum"]:
         landings_col = f"ASFIS {level} Landings"
         factor_col = f"Factor {level}"
 
-        spl.loc[miss_mask, 2021] += spl.loc[miss_mask, landings_col] / spl.loc[
+        spl.loc[miss_mask, YEAR] += spl.loc[miss_mask, landings_col] / spl.loc[
             miss_mask, factor_col
         ].fillna(1)
 
-    cols_to_keep = ["FAO Area", "ASFIS Scientific Name", 2021]
+    cols_to_keep = ["FAO Area", "ASFIS Scientific Name", YEAR]
 
     spl = spl[cols_to_keep]
 
@@ -141,8 +143,8 @@ def compute_missing_stock_landings(
     fishstat,
     analysis_groups,
     nei_to_isscaap,
-    year=2021,
-    key="Stock Landings 2021",
+    year=YEAR,
+    key=f"Stock Landings {YEAR}",
     nei_factor=1,
 ):
     sl = stock_landings.copy()
@@ -184,7 +186,7 @@ def compute_missing_stock_landings(
 
                 factor = min(n_no_l / n_has_l, 1) / nei_factor
 
-            # Get total landings of NEI species in area for 2021
+            # Get total landings of NEI species in area for 2023
             nei_l = cap[(cap["ASFIS Name"] == nei)][year].sum()
 
             no_l = df[reassign_mask & isscaap_mask]

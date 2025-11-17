@@ -5,7 +5,6 @@
 import os
 import pandas as pd
 import numpy as np
-import json
 
 from utils.aggregate_tables import *
 from utils.stock_assessments import get_asfis_mappings, read_stock_data
@@ -16,6 +15,7 @@ def main():
     # Define directories for input and output files
     parent_dir = os.getcwd()
     input_dir = os.path.join(parent_dir, "input")
+    sosi_2025_dir = os.path.join(input_dir, "SOSI-2025")
     clean_data_dir = os.path.join(parent_dir, os.path.join("output", "clean_data"))
     output_dir = os.path.join(parent_dir, os.path.join("output", "aggregate_tables"))
 
@@ -46,106 +46,12 @@ def main():
     
     vc_tier_area = compute_count_for_group(stock_assessments, group_col="Analysis Group", count_col="Tier")
     
-    # Retrieve SOFIA Status by Number
-    sofia_indices = {
-        "Area 21": (46, 0, 0),
-        "Area27": (40, 0, 0),
-        "Area 31": (51, 0, 0),
-        "Area34": (71, 0, 0),
-        "Area37": (60, 0, 0),
-        "Area41": (62, 0, 0),
-        "Area47": (44, 0, 0),
-        "Area51": (52, 0, 0),
-        "Area57": (64, 0, 0),
-        "Area 61": (46, 0, 0),
-        "Area67": (41, 0, 0),
-        "Area71": (63, 0, 0),
-        "Area77": (33, 0, 0),
-        "area81v2": (38, 0, 0),
-        "Area87": (31, 0, 0),
-        "Tunas_HilarioISSF": (19, 0, 0),
-    }
-
-    sofia_sheets = sofia_indices.keys()
-    sofia_sheet_to_area = {
-        sheet: "".join([char for char in sheet if char.isdigit()])
-        for sheet in sofia_sheets
-    }
-    sofia_sheet_to_area = {
-        sheet: f"Area {area}" if area.isdigit() else area
-        for sheet, area in sofia_sheet_to_area.items()
-    }
-    sofia_sheet_to_area["area81v2"] = "Area 81"
-    sofia_sheet_to_area["Tunas_HilarioISSF"] = "Tuna"
-
-    sofia_file_path = os.path.join(
-        input_dir, "sofia2024.xlsx"
-    )
-    sbn_sofia_dict = read_stock_data(
-        sofia_file_path, sofia_indices, desc="SOFIA Sheets"
-    )
-
-    # Reformat SOFIA status by number
-    for sheet, df in sbn_sofia_dict.items():
-        sbn_sofia_dict[sheet]["Analysis Group"] = sofia_sheet_to_area[sheet]
-        sbn_sofia_dict[sheet] = df[
-            ["Analysis Group", "Overfished", "Fully Fished ", "Under fished"]
-        ]
-        sbn_sofia_dict[sheet] = sbn_sofia_dict[sheet].rename(
-            columns={
-                "Overfished": "No. of O",
-                "Fully Fished ": "No. of MSF",
-                "Under fished": "No. of U",
-            }
-        )
-        sbn_sofia_dict[sheet]["No. of Sustainable"] = (
-            sbn_sofia_dict[sheet]["No. of U"] + sbn_sofia_dict[sheet]["No. of MSF"]
-        )
-        sbn_sofia_dict[sheet]["No. of Unsustainable"] = sbn_sofia_dict[sheet][
-            "No. of O"
-        ]
-        sbn_sofia_dict[sheet]["No. of stocks"] = (
-            sbn_sofia_dict[sheet]["No. of Sustainable"]
-            + sbn_sofia_dict[sheet]["No. of Unsustainable"]
-        )
-
-    sbn_sofia = pd.DataFrame()
-
-    for sheet, df in sbn_sofia_dict.items():
-        if sbn_sofia.empty:
-            sbn_sofia = df.copy()
-        else:
-            sbn_sofia = pd.concat([sbn_sofia, df])
-
-    sbn_sofia = pd.concat(
-        [sbn_sofia, pd.DataFrame({"Analysis Group": "Global"}, index=[len(sbn_sofia)])]
-    )
-
-    cols_to_sum = [
-        "No. of stocks",
-        "No. of U",
-        "No. of MSF",
-        "No. of O",
-        "No. of Sustainable",
-        "No. of Unsustainable",
-    ]
-    sbn_sofia.loc[sbn_sofia["Analysis Group"] == "Global", cols_to_sum] = (
-        sbn_sofia[cols_to_sum].sum().values
-    )
-
-    pct_cols = []
-    for col in cols_to_sum:
-        sbn_sofia[col] = sbn_sofia[col].astype(int)
-        if col != "No. of stocks":
-            pct_col = col.replace("No. of ", "") + " (%)"
-            pct_cols.append(pct_col)
-            sbn_sofia[pct_col] = (sbn_sofia[col] / sbn_sofia["No. of stocks"]) * 100
-
-    sbn_col_order = ["Analysis Group"] + cols_to_sum + pct_cols
-    sbn_sofia = sbn_sofia[sbn_col_order]
+    # Compute status by number for previous method for comparison
+    stock_assessments_prev = pd.read_excel(os.path.join(sosi_2025_dir, "stock_assessments.xlsx"))
+    sbn_previous = compute_status_by_number(stock_assessments_prev, "Analysis Group")
 
     # Compare status by number for the two methods
-    sbn_comp = compare_status_by_number(sbn_area, sbn_sofia)
+    sbn_comp = compare_status_by_number(sbn_area, sbn_previous)
 
     # Save status by number files
     sbn_area_fp = os.path.join(output_dir, "status_by_number_area.xlsx")
@@ -223,7 +129,7 @@ def main():
     fishstat = pd.read_csv(os.path.join(input_dir, "global_capture_production.csv"))
 
     # Format fishstat data
-    mappings = get_asfis_mappings(input_dir, "ASFIS_sp_2024.csv")
+    mappings = get_asfis_mappings(input_dir, "ASFIS_sp_2025.csv")
     asfis = mappings["ASFIS"]
     code_to_scientific = dict(zip(asfis["Alpha3_Code"], asfis["Scientific_Name"]))
 
@@ -240,9 +146,7 @@ def main():
         scientific_to_isscaap
     )
     
-    # Drop 2022 data from fishstat
-    fishstat = fishstat.drop(columns=2022)
-
+    # REDO
     # Compute status by number for top ten species globally and save file
     top_ten_species = [
         "Engraulis ringens",
@@ -287,7 +191,6 @@ def main():
             "ASFIS species (Scientific name)": "ASFIS Scientific Name"
         }
     )
-    aquaculture = aquaculture.drop(columns=2022)
 
     # Only keep data for relevant areas
     ac_area_mask = aquaculture["Area"].isin(numerical_areas)
@@ -373,7 +276,7 @@ def main():
                 "ISSCAAP Code": "first",
                 "Status": "first",
                 "Tier": "first",
-                "Stock Landings 2021": "sum"
+                "Stock Landings 2023": "sum"
              }
             )
         .reset_index()
@@ -409,7 +312,7 @@ def main():
         species_landings,
         fishstat,
         isscaap_to_remove,
-        landings_key=2021,
+        landings_key=2023,
     )
 
     # Compute and save the comparison of percent coverage
@@ -427,33 +330,12 @@ def main():
     # Compute weighted percentages with and w/o Tunas category
     wp_area = compute_weighted_percentages(stock_landings)
     
-    # Compute weighted percentages for SOFIA
-    # Aggregate landings based on Analysis Group
-    agg_dict = {
-        "ASFIS Name": "first",
-        2021: "sum"
-    }
-    
-    sofia_landings = (
-        sofia_landings_fao_areas.groupby(["Analysis Group", "ASFIS Scientific Name", "Status"])
-        .agg(agg_dict)
-        .reset_index()
-    )
-    
-    sofia_assessed_mask = sofia_landings["Status"].isin(["U", "M", "O"])
-    sofia_landings_assessed = sofia_landings[sofia_assessed_mask].copy()
-
-    sofia_landings_assessed = sofia_landings_assessed.rename(
-        columns={2021: "Stock Landings 2021"}
-    )
-    sofia_landings_assessed = sofia_landings_assessed[
-        ["Analysis Group", "ASFIS Scientific Name", "Status", "Stock Landings 2021"]
-    ]
-
-    wp_sofia = compute_weighted_percentages(sofia_landings_assessed)
+    # Compute weighted percentages for 2021 assessments
+    stock_landings_prev = pd.read_excel(os.path.join(sosi_2025_dir, "stock_landings.xlsx"))
+    wp_prev = compute_weighted_percentages(stock_landings_prev)
 
     # Compare the weighted percentages for the two assessments
-    wp_comp = compare_weighted_percentages(wp_sofia, wp_area)
+    wp_comp = compare_weighted_percentages(wp_prev, wp_area)
 
     # Save the updated weighted percentages w/Tuna area separate
     wp_area_fp = os.path.join(output_dir, "status_by_landings_area.xlsx")
