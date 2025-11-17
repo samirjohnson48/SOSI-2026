@@ -34,7 +34,7 @@ def main():
     fishstat = fishstat[~number_mask].reset_index(drop=True)
 
     # Format fishstat data
-    mappings = get_asfis_mappings(input_dir, "ASFIS_sp_2024.csv")
+    mappings = get_asfis_mappings(input_dir, "ASFIS_sp_2025.csv")
     asfis = mappings["ASFIS"]
     code_to_scientific = dict(zip(asfis["Alpha3_Code"], asfis["Scientific_Name"]))
     code_to_isscaap = dict(zip(asfis["Alpha3_Code"], asfis["ISSCAAP_Group_Code"]))
