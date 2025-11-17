@@ -317,7 +317,7 @@ def compute_summary_area_by_tier(data):
     return tier_summaries
 
 
-def compute_species_status_by_number(data, species_list, fishstat, year=2021):
+def compute_species_status_by_number(data, species_list, fishstat, year=2023):
     data = data[data["ASFIS Scientific Name"].isin(species_list)]
     group = (
         data.groupby(["ASFIS Scientific Name", "Status"]).size().unstack(fill_value=0)
@@ -388,7 +388,7 @@ def compute_total_area_landings(
     special_groups={},
     isscaap_to_remove=[],
     year_start=1950,
-    year_end=2021,
+    year_end=2023,
     area_key="FAO Area",
     group_key="Analysis Group",
 ):
@@ -476,7 +476,7 @@ def compute_total_aquaculture_landings(
     special_groups={},
     isscaap_to_remove=[],
     year_start=1950,
-    year_end=2021,
+    year_end=2023,
 ):
     sg_masks = {}
 
@@ -531,8 +531,8 @@ def compute_appendix_landings(
     iso3_to_name,
     special_groups,
     year_start=1950,
-    year_end=2021,
-    last_decade_year=2010,
+    year_end=2023,
+    last_decade_year=2020,
 ):
     sl_ = species_landings.copy()
 
@@ -575,7 +575,7 @@ def compute_appendix_landings(
                 "ASFIS Name": "first",
                 "FAO Area": list,
                 "ISSCAAP Code": "first",
-                **{year: ["first", "sum"] for year in range(1950, 2021 + 1)},
+                **{year: ["first", "sum"] for year in range(year_start, year_end + 1)},
             }
         )
     ).reset_index()
@@ -616,9 +616,9 @@ def compute_appendix_landings(
 
         return ", ".join(cap_countries["Country"].values[:5])
 
-    tqdm.pandas(desc="Retrieving Most Active Countries in 2021")
+    tqdm.pandas(desc="Retrieving Most Active Countries in 2023")
 
-    aggregated_species[("Most Active Countries in 2021", "")] = aggregated_species[
+    aggregated_species[("Most Active Countries in 2023", "")] = aggregated_species[
         [("ASFIS Scientific Name", ""), ("FAO Area", "list")]
     ].progress_apply(most_active_countries, axis=1)
     
@@ -660,7 +660,7 @@ def compute_appendix_landings(
     def create_decade_cols(
         data,
         year_start=year_start,
-        last_decade_year=2010,
+        last_decade_year=last_decade_year,
     ):
         d = data.copy()
         for start in range(year_start, last_decade_year + 1, 10):
@@ -681,7 +681,7 @@ def compute_appendix_landings(
         ("ISSCAAP Code", ""),
         ("ASFIS Name", ""),
         ("ASFIS Scientific Name", ""),
-        ("Most Active Countries in 2021", ""),
+        (f"Most Active Countries in {year_end}", ""),
     ]
     columns_order += sorted(
         [
@@ -735,7 +735,7 @@ def compute_appendix_landings(
             :,
             [
                 ("ASFIS Scientific Name", ""),
-                ("Most Active Countries in 2021", ""),
+                (f"Most Active Countries in {year_end}", ""),
             ]
             + tier_cols,
         ] = np.nan
@@ -825,23 +825,6 @@ def compute_appendix_landings(
             ]
         ).reset_index(drop=True)
 
-        # def reverse_forward_fill(df, column_name):
-        #     df_modified = df.copy()
-        #     groups = (
-        #         df_modified[column_name] != df_modified[column_name].shift()
-        #     ).cumsum()
-
-        #     def transform_group(group):
-        #         first_value = group[column_name].iloc[0]
-        #         group[column_name] = [first_value] + [np.nan] * (len(group) - 1)
-        #         return group
-
-        #     df_modified = df_modified.groupby(groups).apply(transform_group)
-
-        #     return df_modified.reset_index(drop=True)
-
-        # area_summary = reverse_forward_fill(area_summary, "ISSCAAP Code")
-
         area_summary_dec = area_summary.drop(
             columns=[("Production", year) for year in list(range(year_start, last_decade_year + 10))]
         )
@@ -861,8 +844,8 @@ def compute_appendix_landings(
 def compute_weighted_percentages(
     stock_landings,
     key="Analysis Group",
-    year=2021,
-    landings_key="Stock Landings 2021",
+    year=2023,
+    landings_key="Stock Landings 2023",
 ):
     data = stock_landings.copy()
 
@@ -921,7 +904,7 @@ def get_weighted_percentages_and_total_landings(
     species_landings,
     special_groups={},
     isscaap_to_remove=[],
-    year=2021,
+    year=2023,
 ):
     wp = weighted_percentages.copy()
     wp_cols = [col[1] for col in wp.columns]
@@ -1077,9 +1060,9 @@ def compute_percent_coverage(
     species_landings,
     fishstat,
     isscaap_to_remove,
-    landings_key="Stock Landings 2021",
+    landings_key="Stock Landings 2023",
     tier=None,
-    year=2021,
+    year=2023,
     area_key="FAO Area",
 ):
     total_cov, total_area_l = 0, 0
@@ -1174,7 +1157,7 @@ def compute_species_weighted_percentages(stock_landings, species_list):
     species_data = stock_landings[species_mask]
 
     group = (
-        species_data.groupby(["ASFIS Scientific Name", "Status"])["Stock Landings 2021"]
+        species_data.groupby(["ASFIS Scientific Name", "Status"])["Stock Landings 2023"]
         .sum()
         .unstack(fill_value=0)
     )
@@ -1203,7 +1186,7 @@ def compute_species_weighted_percentages(stock_landings, species_list):
 
 
 def compute_top_species_by_area(
-    ags, stock_assessments, stock_landings, fishstat, n=10, year=2021
+    ags, stock_assessments, stock_landings, fishstat, n=10, year=2023
 ):
     top_species_dfs = {}
 
@@ -1227,9 +1210,9 @@ def compute_top_species_by_area(
             .nlargest(n)
             .reset_index()
         )
-        top_species[2021] /= 1e3
+        top_species[2023] /= 1e3
         top_species = top_species.rename(
-            columns={2021: "Landings 2021 (in thousand tonnes, live weight equivalent)"}
+            columns={2023: "Landings 2023 (in thousand tonnes, live weight equivalent)"}
         )
 
         top_species_list = list(top_species["ASFIS Scientific Name"])

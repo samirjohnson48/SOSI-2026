@@ -10,7 +10,7 @@ from matplotlib.font_manager import FontProperties
 import inflect
 from textwrap import fill
 
-def compute_top_species_by_area(fishstat, file_path, year=2021, num_species=10):
+def compute_top_species_by_area(fishstat, file_path, year=2023, num_species=10):
     # Identify top 10 species for each area by production
     top_species = (
         fishstat.groupby(["Area", "ASFIS Scientific Name"])
@@ -57,7 +57,7 @@ def list_to_text(values, round=None):
     else:
         return f"{', '.join(values[:-1])}, and {values[-1]}"
     
-def calculate_diversity(area, fishstat, year=2021, percent_coverage=75):
+def calculate_diversity(area, fishstat, year=2023, percent_coverage=75):
     total_capture = fishstat[fishstat["Area"]==area][year].sum()
     
     species_ranked = fishstat[fishstat["Area"]==area].groupby("ASFIS Scientific Name").agg(
@@ -70,7 +70,7 @@ def calculate_diversity(area, fishstat, year=2021, percent_coverage=75):
     return species_needed
 
 
-def figure_summary(area, production_aves, capture_peaks, species_percentage, species_needed, first_year=1950, last_year=2021, last_year_dec=2010, percent_coverage=75):    
+def figure_summary(area, production_aves, capture_peaks, species_percentage, species_needed, first_year=1950, last_year=2023, last_year_dec=2020, percent_coverage=75):    
     p = inflect.engine()
     species_needed_text = p.number_to_words(species_needed)
     species_summary = f"The top ten species accounted for {species_percentage:.2f} percent of total capture production in {last_year}. "
@@ -91,7 +91,7 @@ def figure_summary(area, production_aves, capture_peaks, species_percentage, spe
 
     return total_summary, species_summary
     
-def create_capture_production_figure(area, capture_by_area, top_species, fishstat, output_dir, first_year=1950, last_year=2021, last_year_dec=2010, percent_coverage=75):
+def create_capture_production_figure(area, capture_by_area, top_species, fishstat, output_dir, first_year=1950, last_year=2023, last_year_dec=2020, percent_coverage=75):
     # Set dimensions for figure
     mm_to_inches = 25.4
     width_to_height = 1

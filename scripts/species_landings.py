@@ -60,7 +60,7 @@ def main():
     species_landings = explode_stocks(species_landings)
 
     # Compute species landings for all assessed stocks
-    year_start, year_end = 1950, 2021
+    year_start, year_end = 1950, 2023
     years = list(range(year_start, year_end + 1))
 
     pk = ["FAO Area", "Alpha3_Code", "ASFIS Scientific Name"]
