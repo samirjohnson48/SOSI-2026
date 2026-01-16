@@ -1,0 +1,26 @@
+columns:
+  Alpha3_Code:
+    dtype: string
+    rename: asfis_code
+    restrictions:
+      - ['lambda col: col.str.len().eq(3)', 'error']
+  English_name:
+    dtype: string
+    rename: common_name
+  Family:
+    dtype: string
+    rename: family
+  'ISSCAAP_Group ':
+    dtype: Int64
+    rename: isscaap_code
+  Order or higher taxa:
+    dtype: string
+    rename: order
+  Scientific_Name:
+    dtype: string
+    rename: species_name
+  Taxonomic_Code:
+    dtype: string
+    rename: taxonomic_code
+primary_key:
+  - asfis_code

@@ -1,0 +1,50 @@
+pipeline_id: sosi-2026
+version: 1.0
+
+authentication:
+  google_api:
+    api_version: v3
+    cred_env_var: GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
+    scopes:
+    - https://www.googleapis.com/auth/drive.readonly
+    - https://www.googleapis.com/auth/spreadsheets.readonly
+    service_account_email: drive-pipeline-reader@my-gcp-project.iam.gserviceaccount.com
+extraction:
+  SOSI_2026_workspace:
+    source_type: sheets
+    tables:
+      area27:
+        file_name: Update_Template_SoSI2026-Area27-upd
+        sheet_name: sosi2026
+      area31:
+        file_name: Update_Template_SoSI2026-Area31-upd
+        sheet_name: sosi2026
+      area41: 
+        file_name: Update_Template_SoSI2026-Area41-upd
+        sheet_name: sosi2026
+  capture_zip:
+    source_type: zip
+    url: https://www.fao.org/fishery/static/Data/Capture_2025.1.0.zip
+    tables:
+      capture: 
+        file_name: Capture_Quantity.csv
+      countries: 
+        file_name: CL_FI_COUNTRY_GROUPS.csv
+      areas: 
+        file_name: CL_FI_WATERAREA_GROUPS.csv
+  aquaculture_zip:
+    source_type: zip
+    url: https://www.fao.org/fishery/static/Data/Aquaculture_2025.1.0.zip
+    tables: 
+      aquaculture: 
+        file_name: Aquaculture_Quantity.csv
+  asfis_zip:
+    source_type: zip
+    url: https://www.fao.org/fishery/static/ASFIS/ASFIS_sp.zip
+    tables:
+      asfis: 
+        file_name: ASFIS_sp_2025.csv
+transformation:
+  years:
+    first: 1950
+    last: 2023

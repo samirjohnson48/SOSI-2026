@@ -1,0 +1,15 @@
+save-files:
+  required: False
+  abbreviation: s
+  help: "Save source files to cache folder."
+  action: store_true
+use-cache:
+  required: False
+  abbreviation: c
+  help: "Use cached source files. Assumes cached files are saved in .cache folder"
+  action: store_true
+remove-cache:
+  required: False
+  abbreviation: r
+  help: "Remove all files from the cache directory (.cache)"
+  action: store_true

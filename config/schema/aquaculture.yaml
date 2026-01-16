@@ -1,0 +1,28 @@
+columns:
+  AREA.CODE:
+    dtype: Int64
+    rename: fao_area
+  COUNTRY.UN_CODE:
+    dtype: Int64
+    rename: country_un_code
+  ENVIRONMENT.ALPHA_2_CODE:
+    dtype: string
+    rename: environment_code
+  MEASURE:
+    dtype: string
+    rename: unit
+  PERIOD:
+    dtype: Int64
+    rename: year
+  SPECIES.ALPHA_3_CODE:
+    dtype: string
+    rename: asfis_code
+  VALUE:
+    dtype: float64
+    rename: production
+primary_key:
+  - country_un_code
+  - asfis_code
+  - environment_code
+  - fao_area
+  - year

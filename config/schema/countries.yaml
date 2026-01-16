@@ -1,0 +1,12 @@
+columns:
+  UN_Code:
+    dtype: Int64
+    rename: country_un_code
+  ISO3_Code:
+    dtype: string
+    rename: iso3_code
+  Name_En:
+    dtype: string
+    rename: name
+primary_key: 
+  - country_un_code

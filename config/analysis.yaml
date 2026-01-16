@@ -1,0 +1,21 @@
+# Parameters for analysis tables
+status_by_number_area:
+  input_table: stock_assessments
+  value: status
+  by: fao_area_label
+  show_counts: True
+  show_percentages: True
+  value_map:
+    M: Sustainable
+    U: Sustainable
+    O: Unsustainable
+status_by_number_tier:
+  input_table: stock_assessments
+  value: status
+  by: tier
+  show_counts: True
+  show_percentages: True
+  value_map:
+    M: Sustainable
+    U: Sustainable
+    O: Unsustainable

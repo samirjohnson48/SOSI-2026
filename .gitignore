@@ -1,0 +1,8 @@
+__pycache__/
+.DS_Store
+todo.txt
+.ruff_cache
+analysis.ipynb
+.ipynb_checkpoints
+.venv
+utils/
