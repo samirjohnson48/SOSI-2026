@@ -5,6 +5,7 @@ Main file for running the SOSI 2026 ETL Pipeline
 import yaml
 import logging
 import argparse
+import os
 from pathlib import Path
 from tqdm import tqdm
 
@@ -174,6 +175,7 @@ def main():
         figures[figure_name] = fig
 
     # ---------- LOADING ----------
+    print(os.getenv)
     dbx = authenticator.get_dropbox_client()
     loader = SOSILoader(
         dbx,
