@@ -194,7 +194,6 @@ def main():
         figures,
         config["version"],
         config["loading"]["dpi"],
-        config["loading"]["save_index"],
     )
 
 
