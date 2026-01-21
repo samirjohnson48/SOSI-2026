@@ -30,7 +30,7 @@ jobs:
 
       - name: Run SOSI Pipeline
         env:
-          DROPBOX_TOKEN: ${{ secrets.DROPBOX_TOKEN }}
+          DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
           GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH: ${{ github.workspace }}/gsa_credentials.json
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           PIPELINE_VERSION: "v1.0_auto"
