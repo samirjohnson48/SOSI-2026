@@ -1,9 +1,15 @@
+# Folders
 __pycache__/
+logs/
+utils/
+
+# Hidden folders and files
 .DS_Store
-todo.txt
 .ruff_cache
-analysis.ipynb
 .ipynb_checkpoints
 .venv
-utils/
 .cache
+
+# Files
+todo.txt
+analysis.ipynb
