@@ -6,3 +6,4 @@ analysis.ipynb
 .ipynb_checkpoints
 .venv
 utils/
+.cache
