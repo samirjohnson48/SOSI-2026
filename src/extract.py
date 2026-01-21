@@ -22,8 +22,9 @@ logger = logging.getLogger(__file__)
 
 
 class SOSIExtractor:
-    CACHE_DIR = Path(__file__).resolve().parent.parent / ".cache"
-    SAVE_FILE_EXTENSION = ".csv"
+    PROJECT_DIR = Path(__file__).resolve().parent.parent
+    CACHE_DIR = PROJECT_DIR / ".cache"
+    SAVE_FILE_EXTENSION = "csv"
 
     def __init__(
         self,
@@ -104,10 +105,11 @@ class SOSIExtractor:
     def _get_table_from_path(
         self,
         file_path: Path,
+        remove_file: bool = False,
     ) -> pd.DataFrame:
         df = pd.read_csv(file_path)
         logger.info("-> Successfully extracted file into Pandas DataFrame")
-        if not self.save_files:
+        if remove_file:
             os.remove(file_path)
         else:
             logger.info(f"-> Saved file to {file_path}")
@@ -118,7 +120,6 @@ class SOSIExtractor:
         self,
         zip_url: str,
         tables: dict[str, dict[str, str]],
-        extract_to: Path | None = None,
     ) -> dict[str, pd.DataFrame]:
         """
         Loads datasets from a zip file
@@ -127,9 +128,8 @@ class SOSIExtractor:
         logger.info(
             f"-> Extracting tables {', '.join(tables.keys())} from url: {zip_url}"
         )
-
-        if extract_to is None:
-            extract_to = self.cache_dir
+        # Set up temporary directory
+        extract_to = self.PROJECT_DIR / "temp"
 
         try:
             response = requests.get(zip_url)
@@ -152,10 +152,14 @@ class SOSIExtractor:
         zip_in_memory.close()
 
         dfs: dict[str, pd.DataFrame] = {}
-        for table_name, table_info in tables.items():
+        pbar = tqdm(tables.items(), leave=False, colour="green", ascii=True)
+        for table_name, table_info in pbar:
+            pbar.set_description(f"Extracting {table_name}")
             dfs[table_name] = self._get_table_from_path(
-                extract_to / table_info["file_name"]
+                extract_to / table_info["file_name"], remove_file=True
             )
+
+        extract_to.rmdir()
 
         return dfs
 
@@ -291,6 +295,13 @@ class SOSIExtractor:
             logger.info("-> Successfully loaded data into Pandas DataFrame.")
 
             file_content.close()
+
+            if self.save_files:
+                if not table_name:
+                    raise ValueError(
+                        f"Must specify table_name for file {file_name} in order to cache."
+                    )
+                df.to_csv(self.cache_dir / f"{table_name}.csv")
             return df
 
         except FileNotFoundError as e:
@@ -316,12 +327,14 @@ class SOSIExtractor:
         cache_dir: Path,
         file_extension: str = SAVE_FILE_EXTENSION,
     ) -> pd.DataFrame:
-        file_name = f"{table_name}{file_extension}"
+        file_name = f"{table_name}.{file_extension}"
+
+        logger.info(f"Extraction {table_name} from cache")
 
         match file_extension:
-            case ".csv":
+            case "csv":
                 return pd.read_csv(cache_dir / file_name)
-            case ".xlsx":
+            case "xlsx":
                 return pd.read_excel(cache_dir / file_name)
             case _:
                 raise ValueError(
@@ -340,6 +353,7 @@ class SOSIExtractor:
         tables: dict[str, pd.DataFrame] = {}
         if use_cache:
             for table_name in source_info["tables"].keys():
+                print(f"Extracting {table_name} from cache", end="\r")
                 tables[table_name] = self._get_table_from_cache(
                     table_name, self.cache_dir
                 )
@@ -402,11 +416,16 @@ class SOSIExtractor:
                 tables = self._get_tables_from_zip(
                     source_info["url"],
                     source_info["tables"],
-                    extract_to=self.cache_dir,
                 )
             case _:
                 raise ValueError(
                     f"Unknown source type {source_info['source_type']} specified for {source_name} in extraction."
+                )
+
+        if self.save_files:
+            for table_name, table in tables.items():
+                table.to_csv(
+                    self.cache_dir / f"{table_name}.{self.SAVE_FILE_EXTENSION}"
                 )
 
         return tables

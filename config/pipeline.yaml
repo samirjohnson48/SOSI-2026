@@ -1,14 +1,17 @@
 pipeline_id: sosi-2026
 version: 1.0
+assessment_year: 2023
 
 authentication:
   google_api:
     api_version: v3
-    cred_env_var: GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
+    cred_path_env_var: GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
     scopes:
     - https://www.googleapis.com/auth/drive.readonly
     - https://www.googleapis.com/auth/spreadsheets.readonly
     service_account_email: drive-pipeline-reader@my-gcp-project.iam.gserviceaccount.com
+  dropbox_api:
+    token_env_var: DROPBOX_ACCESS_TOKEN
 extraction:
   SOSI_2026_workspace:
     source_type: sheets
@@ -30,7 +33,7 @@ extraction:
         file_name: Capture_Quantity.csv
       countries: 
         file_name: CL_FI_COUNTRY_GROUPS.csv
-      areas: 
+      fao_areas: 
         file_name: CL_FI_WATERAREA_GROUPS.csv
   aquaculture_zip:
     source_type: zip
@@ -48,3 +51,14 @@ transformation:
   years:
     first: 1950
     last: 2023
+plotting:
+  isscaap_to_exclude: [61, 62, 63, 64, 71, 72, 73, 74, 81, 82, 83, 91, 92, 93, 94]
+  species_to_exclude: [MZZ]
+  show_figure: False
+loading:
+  table_extension: xlsx
+  figure_extension: pdf
+  dpi: 300
+  save_index: True
+
+

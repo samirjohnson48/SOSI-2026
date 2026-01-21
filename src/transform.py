@@ -33,17 +33,15 @@ class SOSITransformer:
     STATUS_VALS = ["U", "M", "O"]
     # Source name in pipeline.yaml for the stock assessment tables
     STOCK_TABLE_SOURCE = "SOSI_2026_workspace"
+    # First year of recorded landings
+    FIRST_YEAR = 1950
 
     def __init__(
         self,
-        config: dict[str, Any],
-        first_year: int = 1950,
-        ass_year: int = 2023,
+        assessment_year: int,
         error_log_dir: Path | None = None,
     ):
-        self.config = config
-        self.first_year = first_year
-        self.ass_year = ass_year
+        self.ass_year = assessment_year
         self.error_log_dir = error_log_dir
 
         self.stats = {"rows_dropped": 0}
@@ -282,15 +280,20 @@ class SOSITransformer:
             table_ext = table_ext.rename(columns={col_to_extend: new_col_name})
         return table_ext
 
-    def pivot_production(
+    def _pivot_production(
         self,
         table: pd.DataFrame,
         area_col: str = AREA_COL,
         species_col: str = SPECIES_CODE_COL,
         year_col: str = YEAR_COL,
         production_col: str = PRODUCTION_COL,
+        years: list[int] | range | None = None,
     ) -> pd.DataFrame:
-        cap_grouped = table.groupby(by=[area_col, species_col, year_col])[
+        if years is None:
+            years = range(self.FIRST_YEAR, self.ass_year + 1)
+        year_mask = table[year_col].isin(years)
+        cap_masked = table[year_mask]
+        cap_grouped = cap_masked.groupby(by=[area_col, species_col, year_col])[
             production_col
         ].sum()
         cap_reset = cap_grouped.reset_index()
@@ -305,7 +308,8 @@ class SOSITransformer:
         self,
         stock_assessments: pd.DataFrame,
         capture: pd.DataFrame,
-        years: list[int] | range | None = None,
+        first_year: int = FIRST_YEAR,
+        assessment_year: int | None = None,
         species_delimiter: str = SPECIES_CODE_DELIMITER,
         production_col: str = PRODUCTION_COL,
         species_col: str = SPECIES_CODE_COL,
@@ -316,11 +320,16 @@ class SOSITransformer:
         """
         Computes the landings for all species in the assessment
         """
-        if not years:
-            years = range(self.first_year, self.ass_year)
-
-        cap = self.pivot_production(
-            capture, area_col, species_col, year_col, production_col
+        if assessment_year is None:
+            assessment_year = self.ass_year
+        years = range(first_year, assessment_year + 1)
+        cap = self._pivot_production(
+            table=capture,
+            area_col=area_col,
+            species_col=species_col,
+            year_col=year_col,
+            production_col=production_col,
+            years=years,
         )
 
         # Explode across species
@@ -401,28 +410,72 @@ class SOSITransformer:
         )
 
         stock_landings = (
-            stock_landings.groupby(self.ID_COL)[self.LANDINGS_COL].sum().to_frame()
+            stock_landings.groupby(self.ID_COL)[self.LANDINGS_COL].sum().reset_index()
         )
 
         return stock_landings
+
+    def _compute_counts_by_weight(
+        self,
+        input_table: pd.DataFrame,
+        value: str,
+        by: str,
+        weight_col: str,
+        weight_map: dict | None = None,
+    ) -> pd.DataFrame:
+        df = input_table.copy()
+        if weight_map is not None:
+            df[weight_col] = df[weight_col].map(weight_map)
+
+        counts = df.groupby(by)[[value, weight_col]].value_counts().reset_index()
+        w = "weighted_counts"
+        counts[w] = counts[weight_col] * counts["count"]
+
+        return counts.groupby([by, value])[w].sum().unstack(level=value)
 
     def compute_aggregate_table(
         self,
         input_table: pd.DataFrame,
         value: str,
         by: str,
+        join_table: pd.DataFrame | None = None,
+        join_key: list[str] | str | None = None,
         show_counts: bool = True,
         show_percentages: bool = True,
         value_map: dict[str, str] | None = None,
         totals_row: bool = True,
         totals_label: str = "Global",
+        weight_col: str | None = None,
+        weight_map: dict | None = None,
     ) -> pd.DataFrame:
         if not (show_counts or show_percentages):
             raise ValueError(
                 "compute_aggregate_table usage: one of show_counts or show_percentages must be True"
             )
 
-        counts = input_table.groupby(by)[value].value_counts().unstack(level=value)
+        data: pd.DataFrame
+        if join_table is not None:
+            if join_key is None:
+                cols = list(set(input_table.columns).intersection(join_table.columns))
+                if len(cols) == 0:
+                    raise ValueError(
+                        "Input table and join table must have overlapping columns if no join key is specified."
+                    )
+                join_key = cols
+            data = pd.merge(input_table, join_table, how="inner", on=join_key)
+        else:
+            data = input_table.copy()
+
+        if weight_col is not None:
+            counts = self._compute_counts_by_weight(
+                input_table=data,
+                value=value,
+                by=by,
+                weight_col=weight_col,
+                weight_map=weight_map,
+            )
+        else:
+            counts = data.groupby(by)[value].value_counts().unstack(level=value)
 
         if totals_row:
             counts.loc[totals_label] = counts.sum()

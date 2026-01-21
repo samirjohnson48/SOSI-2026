@@ -1,0 +1,20 @@
+columns:
+  Code:
+    dtype: Int64
+    rename: fao_area
+  fao_area_label:
+    dtype: string
+    from: Code
+    transformation: "lambda col: 'fao:' + col.astype('string')"
+  Name_En:
+    dtype: string
+    rename: fao_area_name
+  Ocean_Group_En:
+    dtype: string
+    rename: ocean
+  FARegion_Group_En:
+    dtype: string
+    rename: region
+primary_key:
+  - fao_area
+

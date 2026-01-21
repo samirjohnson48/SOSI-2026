@@ -1,0 +1,63 @@
+# Define variables to be reused in plot definitions
+variables:
+  figure_width: &FIG_WIDTH 6.063
+  figure_height: &FIG_HEIGHT 6.063
+  MT_SCALE: &MT_SCALE 1e-6
+  LOC: &LOC lower left
+  BBOX_TO_ANCHOR: &BBOX_TO_ANCHOR [0, -0.2]
+
+production_by_ocean:
+  suptitle: 
+    t: Capture Production
+  groupby:
+    table: fao_areas
+    col: ocean
+  subplots_args:
+    nrows: 1
+    ncols: 2
+    figsize: [*FIG_WIDTH, *FIG_HEIGHT]
+  tight_layout: True
+  axs_params:
+    total_production:
+      input_table: capture
+      x_col: year
+      y_col: production
+      join_table: 
+        - fao_areas
+        - asfis
+      join_key:
+        fao_areas: fao_area
+        asfis: asfis_code
+      filter_query: isscaap_code not in @self.isscaap_to_exclude
+      y_scale: *MT_SCALE
+      plot_args:
+        xlabel: Year
+        ylabel: Production (Million Tonnes)
+        title: Total Capture Production
+    top_species_production:
+      input_table: capture
+      x_col: year
+      y_col: production
+      kind: area
+      join_table: 
+        - fao_areas
+        - asfis
+      join_key:
+        fao_areas: fao_area
+        asfis: asfis_code
+      filter_query: asfis_code not in @self.species_to_exclude
+      y_scale: *MT_SCALE
+      group_col: asfis_code
+      n_largest: 10
+      x_val_n_largest: assessment_year
+      legend_args:
+        loc: *LOC
+        bbox_to_anchor: *BBOX_TO_ANCHOR
+        title: Species
+        ncols: 5
+      plot_args:
+        xlabel: Year
+        ylabel: Production (Million Tonnes)
+        title: Top Ten Species Capture Production
+
+

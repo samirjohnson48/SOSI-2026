@@ -1,0 +1,68 @@
+# Parameters for analysis tables
+status_by_number_area:
+  input_table: stock_assessments
+  value: status
+  by: fao_area_label
+  show_counts: True
+  show_percentages: True
+  totals_row: True
+  value_map:
+    M: Sustainable
+    U: Sustainable
+    O: Unsustainable
+status_by_number_tier:
+  input_table: stock_assessments
+  value: status
+  by: tier
+  show_counts: True
+  show_percentages: True
+  totals_row: True
+  value_map:
+    M: Sustainable
+    U: Sustainable
+    O: Unsustainable
+status_by_number_ocean:
+  input_table: stock_assessments
+  join_table: fao_areas
+  join_key: fao_area_label
+  value: status
+  by: ocean
+  show_counts: True
+  show_percentages: True
+  totals_row: False
+  value_map:
+    M: Sustainable
+    U: Sustainable
+    O: Unsustainable
+status_by_tier_area:
+  input_table: stock_assessments
+  value: status
+  by: fao_area_label
+  show_counts: False
+  show_percentages: True
+  value_map:
+    M: Sustainable
+    U: Sustainable
+    O: Unsustainable
+  totals_row: True
+  weight_col: tier
+  weight_map:
+    1: 1
+    2: 0.5
+    3: 0.25
+status_by_landings:
+  input_table: stock_landings
+  join_table: stock_assessments
+  join_key: grsf_stock_id
+  value: status
+  by: fao_area_label
+  show_counts: False
+  show_percentages: True
+  value_map:
+    M: Sustainable
+    U: Sustainable
+    O: Unsustainable
+  totals_row: True
+  weight_col: landings_2023
+
+

@@ -9,6 +9,7 @@ import os
 from google.oauth2 import service_account
 from googleapiclient.discovery import build, Resource
 from googleapiclient.errors import HttpError
+from dropbox import Dropbox
 
 
 class SOSIAuthenticator:
@@ -16,9 +17,11 @@ class SOSIAuthenticator:
         self,
         google_service_account_creds_env_var: str,
         google_scopes: list,
+        dropbox_token_env_var: str,
     ):
         self.google_service_account_creds_env_var = google_service_account_creds_env_var
         self.google_scopes = google_scopes
+        self.dropbox_token_env_var = dropbox_token_env_var
 
     def _get_google_service_credentials(self):
         try:
@@ -68,3 +71,12 @@ class SOSIAuthenticator:
         except Exception as e:
             print("An unexpected error occurred: ")
             raise e
+
+    def get_dropbox_client(self):
+        token = os.getenv(self.dropbox_token_env_var)
+        if token is None:
+            raise KeyError(
+                f"Dropbox access token not stored in environment variable {self.dropbox_token_env_var}"
+            )
+
+        return Dropbox(token)
