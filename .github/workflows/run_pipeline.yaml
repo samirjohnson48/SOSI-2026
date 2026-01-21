@@ -26,7 +26,7 @@ jobs:
 
       - name: Decode and Create Google Credentials File
         run: |
-          echo "${{ secrets.GCP_CREDENTIALS_BASE64 }}" | base64 --decode > gsa_credentials.json
+          echo "${{ secrets.GSA_CREDENTIALS_BASE64 }}" | base64 --decode > gsa_credentials.json
 
       - name: Run SOSI Pipeline
         env:
