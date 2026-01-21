@@ -11,7 +11,9 @@ authentication:
     - https://www.googleapis.com/auth/spreadsheets.readonly
     service_account_email: drive-pipeline-reader@my-gcp-project.iam.gserviceaccount.com
   dropbox_api:
-    token_env_var: DROPBOX_ACCESS_TOKEN
+    key_env_var: DROPBOX_APP_KEY
+    secret_env_var: DROPBOX_APP_SECRET
+    refresh_token_env_var: DROPBOX_REFRESH_TOKEN
 extraction:
   SOSI_2026_workspace:
     source_type: sheets

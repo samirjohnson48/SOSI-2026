@@ -52,7 +52,9 @@ def main():
     authenticator = SOSIAuthenticator(
         config["authentication"]["google_api"]["cred_path_env_var"],
         config["authentication"]["google_api"]["scopes"],
-        config["authentication"]["dropbox_api"]["token_env_var"],
+        config["authentication"]["dropbox_api"]["key_env_var"],
+        config["authentication"]["dropbox_api"]["secret_env_var"],
+        config["authentication"]["dropbox_api"]["refresh_token_env_var"],
     )
     drive_service = authenticator.get_google_service(service_name="drive")
     sheets_service = authenticator.get_google_service(service_name="sheets")
