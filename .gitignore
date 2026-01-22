@@ -1,6 +1,5 @@
 # Folders
 __pycache__/
-logs/
 utils/
 
 # Hidden folders and files
@@ -11,5 +10,10 @@ utils/
 .cache
 
 # Files
+logs/*
+*.log
 todo.txt
 analysis.ipynb
+
+# Files to keep
+!logs/.gitkeep

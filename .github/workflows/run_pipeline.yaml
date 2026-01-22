@@ -35,5 +35,13 @@ jobs:
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
           GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH: ${{ github.workspace }}/gsa_credentials.json
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-          PIPELINE_VERSION: "v1.0_auto"
+          BRANCH: ${{ github.ref_name }}
         run: python3 -m src.main
+
+      - name: Upload Logs as Artifacts
+        if: always() 
+        uses: actions/upload-artifact@v4
+        with:
+          name: execution-logs
+          path: logs/*.log
+          retention-days: 5 

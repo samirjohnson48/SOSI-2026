@@ -3,6 +3,7 @@ Utility functions
 """
 
 import pandas as pd
+import os
 from typing import Any
 
 
@@ -50,3 +51,15 @@ def unique_vals(df: pd.DataFrame, col: str | list[str], dropna: bool = True) -> 
     if isinstance(col, str):
         return list(base_df[col].unique())
     return list(base_df[col].drop_duplicates().values)
+
+
+def get_branch(branch_env_var: str | None) -> str:
+    if branch_env_var:
+        branch = os.getenv(branch_env_var)
+        if branch is not None:
+            return branch
+    try:
+        return f"local/{os.getlogin()}"
+    except OSError:
+        branch = os.getenv("USER", os.getenv("USERNAME"))
+        return f"local/{branch}" if branch is not None else "local"

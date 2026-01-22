@@ -11,16 +11,23 @@ from matplotlib.figure import Figure
 from tqdm import tqdm
 from typing import Any
 
+from .utils import get_branch
+
 logger = logging.getLogger(__name__)
 
 
 class SOSILoader:
     def __init__(
-        self, dbx: dropbox.Dropbox, table_extension: str, figure_extension: str
+        self,
+        dbx: dropbox.Dropbox,
+        table_extension: str,
+        figure_extension: str,
+        branch_env_var: str | None = None,
     ):
         self.dbx = dbx
         self.table_extension = table_extension
         self.figure_extension = figure_extension
+        self.branch = get_branch(branch_env_var)
 
     def _upload_table(
         self,
@@ -30,10 +37,6 @@ class SOSILoader:
         save_index: bool,
         table_name: str = "",
     ) -> None:
-        """
-        Serializes a DataFrame and uploads it to Dropbox at a versioned path.
-        Path: /version/table_type/table_name.extension
-        """
         buffer = io.BytesIO()
 
         try:
@@ -69,7 +72,7 @@ class SOSILoader:
         )
         for table_name, table in pbar:
             pbar.set_description(f"Loading {table_name}")
-            target_path = f"/{pipeline_version}/tables/{table_type}/{table_name}.{self.table_extension}"
+            target_path = f"/{self.branch}/{pipeline_version}/tables/{table_type}/{table_name}.{self.table_extension}"
             self._upload_table(
                 table,
                 target_path,
@@ -86,10 +89,6 @@ class SOSILoader:
         dpi: int = 300,
         figure_name: str = "",
     ) -> None:
-        """
-        Serializes a Matplotlib figure and uploads it to Dropbox.
-        Path: /version/figure_type/figure_name.extension
-        """
         buffer = io.BytesIO()
 
         try:
@@ -134,14 +133,12 @@ class SOSILoader:
                 for fig_name, fig in fig_pbar:
                     name_to_save = fig_name.lower().replace(" ", "_")
                     fig_pbar.set_description(f"Loading {fig_name}")
-                    target_path = f"/{pipeline_version}/figures/{content_name}/{name_to_save}.{self.figure_extension}"
+                    target_path = f"/{self.branch}/{pipeline_version}/figures/{content_name}/{name_to_save}.{self.figure_extension}"
                     self._upload_figure(
                         fig, target_path, self.figure_extension, dpi, fig_name
                     )
             else:
-                target_path = (
-                    f"{pipeline_version}/figures/{content_name}.{self.figure_extension}"
-                )
+                target_path = f"/{self.branch}/{pipeline_version}/figures/{content_name}.{self.figure_extension}"
                 self._upload_figure(
                     contents, target_path, self.figure_extension, dpi, content_name
                 )

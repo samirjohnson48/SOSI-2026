@@ -1,21 +1,31 @@
 # Define variables to be reused in plot definitions
 variables:
-  figure_width: &FIG_WIDTH 6.063
-  figure_height: &FIG_HEIGHT 6.063
-  MT_SCALE: &MT_SCALE 1e-6
-  LOC: &LOC lower left
-  BBOX_TO_ANCHOR: &BBOX_TO_ANCHOR [0, -0.2]
+  figure_width: &FIG_W 10
+  figure_height: &FIG_H 10
+  figure_title_font_size: &FIG_TITLE_FZ 15
+  millitonnes_scale: &MT_SCALE 1e-6
+  line_color: &L_COLOR black
+  legend_location: &LOC lower left
+  legend_bbox_to_anchor: &BBOX_TO_ANCHOR [0, -0.22]
+  legend_font_size: &LG_FZ 10
+  legend_handle_length: &LG_HL 0.6
+  grid_alpha: &G_ALPHA 0.4
+  grid_linestype: &G_LS --
+
 
 production_by_ocean:
   suptitle: 
     t: Capture Production
+    fontsize: *FIG_TITLE_FZ
   groupby:
     table: fao_areas
     col: ocean
   subplots_args:
     nrows: 1
     ncols: 2
-    figsize: [*FIG_WIDTH, *FIG_HEIGHT]
+    figsize: [*FIG_W, *FIG_H]
+    gridspec_kw:
+      width_ratios: [1,1]
   tight_layout: True
   axs_params:
     total_production:
@@ -34,6 +44,11 @@ production_by_ocean:
         xlabel: Year
         ylabel: Production (Million Tonnes)
         title: Total Capture Production
+        color: *L_COLOR
+      grid_args:
+        visible: True
+        alpha: *G_ALPHA
+        linestyle: *G_LS
     top_species_production:
       input_table: capture
       x_col: year
@@ -51,10 +66,13 @@ production_by_ocean:
       n_largest: 10
       x_val_n_largest: assessment_year
       legend_args:
+        map_col: species_name
+        fontsize: *LG_FZ
+        handlelength: *LG_HL
         loc: *LOC
         bbox_to_anchor: *BBOX_TO_ANCHOR
-        title: Species
-        ncols: 5
+        ncols: 2
+        frameon: False
       plot_args:
         xlabel: Year
         ylabel: Production (Million Tonnes)

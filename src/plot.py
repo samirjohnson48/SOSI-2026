@@ -102,6 +102,7 @@ class SOSIPlotter:
         x_val_n_largest: Any | None = None,
         legend_args: dict = {},
         plot_args: dict = {},
+        grid_args: dict = {"visible": False},
     ):
         if join_table is not None and join_key is not None:
             data = self._join_table(input_table, join_table, join_key)
@@ -134,10 +135,23 @@ class SOSIPlotter:
             sorted_columns = pivoted.sum().sort_values(ascending=False).index
             pivoted = pivoted[sorted_columns]
             pivoted.plot(ax=ax, kind=kind, **plot_args)
+
+            if "map_col" in legend_args:
+                handles, labels = ax.get_legend_handles_labels()
+                label_map = {
+                    k: v
+                    for k, v in zip(data[group_col], data[legend_args.pop("map_col")])
+                }
+                new_labels = [label_map[l] for l in labels]
+                legend_args["handles"] = handles
+                legend_args["labels"] = new_labels
+
             ax.legend(**legend_args)
         else:
             grouped = data.groupby(x_col)[y_col].sum()
             grouped.plot(ax=ax, kind=kind, **plot_args)
+
+        ax.grid(**grid_args)
 
         return ax
 
@@ -156,7 +170,8 @@ class SOSIPlotter:
         return join_table
 
     def create_figure(
-        self, params: dict, show: bool = False
+        self,
+        params: dict,
     ) -> Figure | dict[str, Figure]:
         if "groupby" in params:
             figs = {}
@@ -183,11 +198,11 @@ class SOSIPlotter:
                         join_table=join_table,
                         **remove_key(ax_args, ["input_table", "join_table"]),
                     )
-                if params.get("tight_layout", False):
-                    fig.set_tight_layout(True)
+                fig.set_tight_layout(params.get("tight_layout", False))
                 if self.show_figure:
                     plt.show()
                 figs[val] = fig
+                break  # TODO: REMEMVER TO DELETE THIS
             return figs
 
         fig, axs = plt.subplots(**params.get("subplots_args", {}))

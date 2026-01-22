@@ -159,6 +159,8 @@ def main():
             input_table=input_table, join_table=join_table, **params
         )
 
+    return tables
+
     # Create output plots
     plotter = SOSIPlotter(
         tables=remove_key(tables, "source"),
@@ -181,6 +183,7 @@ def main():
         dbx,
         table_extension=config["loading"]["table_extension"],
         figure_extension=config["loading"]["figure_extension"],
+        branch_env_var=config["loading"]["branch_env_var"],
     )
 
     # Load tables
