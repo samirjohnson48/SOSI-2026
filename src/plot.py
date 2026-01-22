@@ -9,11 +9,18 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from typing import Any, Literal
 
-from .utils import find_key, remove_key, add_val, unique_vals, create_filter_query
+from .utils import (
+    find_key,
+    remove_key,
+    add_val,
+    unique_vals,
+    create_filter_query,
+    join_tables,
+    filter_top_n,
+)
 
 logger = logging.getLogger(__file__)
 
-MergeHow = Literal["left", "right", "outer", "inner", "cross"]
 PlotKind = Literal[
     "line",
     "bar",
@@ -44,48 +51,6 @@ class SOSIPlotter:
         self.species_to_exclude = species_to_exclude
         self.show_figure = show_figure
 
-    def _join_table(
-        self,
-        df: pd.DataFrame,
-        join_table: pd.DataFrame | dict[str, pd.DataFrame],
-        join_key: str | list[str] | dict[str, str] | dict[str, list[str]],
-        how: MergeHow = "left",
-    ) -> pd.DataFrame:
-        result: pd.DataFrame
-        if isinstance(join_table, dict):
-            if not isinstance(join_key, dict):
-                raise ValueError(
-                    "join_key must also be dictionary if join_table is dictionary."
-                )
-
-            diff = set(join_table.keys()) - set(join_key.keys())
-            if len(diff) > 0:
-                raise ValueError(
-                    f"join_key must contain the same keys as join_table. Missing keys: {diff}"
-                )
-            result = df.copy()
-            for table_name, table in join_table.items():
-                result = pd.merge(result, table, on=join_key[table_name], how=how)
-        elif isinstance(join_table, pd.DataFrame) and isinstance(join_key, (str, list)):
-            result = pd.merge(df, join_table, on=join_key, how=how)
-
-        return result
-
-    def _filter_top_n(
-        self,
-        data: pd.DataFrame,
-        group_col: str,
-        y_col: str,
-        n_largest: int,
-        x_col: str | None = None,
-        x_val_n_largest: Any | None = None,
-    ) -> pd.DataFrame:
-        if x_val_n_largest == "assessment_year":
-            x_val_n_largest = self.ass_year
-        base_data = data[data[x_col] == x_val_n_largest] if x_val_n_largest else data
-        top_n = base_data.groupby(group_col)[y_col].sum().nlargest(n_largest).index
-        return data[data[group_col].isin(top_n)]
-
     def _create_subplot(
         self,
         ax: Axes,
@@ -103,9 +68,10 @@ class SOSIPlotter:
         legend_args: dict = {},
         plot_args: dict = {},
         grid_args: dict = {"visible": False},
+        sort_ascending: bool = True,
     ):
         if join_table is not None and join_key is not None:
-            data = self._join_table(input_table, join_table, join_key)
+            data = join_tables(input_table, join_table, join_key)
         else:
             data = input_table
 
@@ -122,7 +88,9 @@ class SOSIPlotter:
 
         if group_col is not None:
             if n_largest is not None:
-                data = self._filter_top_n(
+                if x_val_n_largest == "assessment_year":
+                    x_val_n_largest = self.ass_year
+                data = filter_top_n(
                     data=data,
                     group_col=group_col,
                     y_col=y_col,
@@ -132,7 +100,7 @@ class SOSIPlotter:
                 )
             grouped = data.groupby([group_col, x_col])[y_col].sum()
             pivoted = grouped.unstack(level=group_col)
-            sorted_columns = pivoted.sum().sort_values(ascending=False).index
+            sorted_columns = pivoted.sum().sort_values(ascending=sort_ascending).index
             pivoted = pivoted[sorted_columns]
             pivoted.plot(ax=ax, kind=kind, **plot_args)
 
@@ -155,20 +123,6 @@ class SOSIPlotter:
 
         return ax
 
-    def _find_join_table(
-        self, ax_args: dict
-    ) -> pd.DataFrame | dict[str, pd.DataFrame] | None:
-        join_table = None
-        if "join_table" in ax_args:
-            if isinstance(ax_args["join_table"], str):
-                join_table = find_key(self.tables, ax_args["join_table"])
-            elif isinstance(ax_args["join_table"], list):
-                jts = ax_args["join_table"]
-                join_table = {}
-                for jt in jts:
-                    join_table[jt] = find_key(self.tables, jt)
-        return join_table
-
     def create_figure(
         self,
         params: dict,
@@ -190,7 +144,11 @@ class SOSIPlotter:
                     fig.suptitle(**st_args)
                 for i, ax_args in enumerate(params["axs_params"].values()):
                     input_table = find_key(self.tables, ax_args["input_table"])
-                    join_table = self._find_join_table(ax_args)
+                    join_table = (
+                        find_key(self.tables, ax_args["join_table"])
+                        if "join_table" in ax_args
+                        else None
+                    )
                     ax_args = add_val(ax_args, "filter_query", val_filter)
                     self._create_subplot(
                         ax=axs[i],
@@ -202,14 +160,17 @@ class SOSIPlotter:
                 if self.show_figure:
                     plt.show()
                 figs[val] = fig
-                break  # TODO: REMEMVER TO DELETE THIS
             return figs
 
         fig, axs = plt.subplots(**params.get("subplots_args", {}))
         for i, ax_args in enumerate(params["axs_params"].values()):
             input_table_name = ax_args.pop("input_table")
             input_table = find_key(self.tables, input_table_name)
-            join_table = self._find_join_table(ax_args)
+            join_table = (
+                find_key(self.tables, ax_args["join_table"])
+                if "join_table" in ax_args
+                else None
+            )
             self._create_subplot(
                 ax=axs[i], input_table=input_table, join_table=join_table, **ax_args
             )
