@@ -27,7 +27,7 @@ class SOSILoader:
         self.dbx = dbx
         self.table_extension = table_extension
         self.figure_extension = figure_extension
-        self.branch = get_branch(branch_env_var)
+        self.branch = get_branch(branch_env_var).replace("/", "_")
 
     def _upload_table(
         self,
