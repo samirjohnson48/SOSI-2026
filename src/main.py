@@ -159,8 +159,6 @@ def main():
             input_table=input_table, join_table=join_table, **params
         )
 
-    return tables
-
     # Create output plots
     plotter = SOSIPlotter(
         tables=remove_key(tables, "source"),
