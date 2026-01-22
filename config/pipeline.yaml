@@ -27,6 +27,9 @@ extraction:
       area41: 
         file_name: Update_Template_SoSI2026-Area41-upd
         sheet_name: sosi2026
+      area77:
+        file_name: Update_Template_SoSI2026-Area77-upd
+        sheet_name: sosi2026
   capture_zip:
     source_type: zip
     url: https://www.fao.org/fishery/static/Data/Capture_2025.1.0.zip
