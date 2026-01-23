@@ -151,7 +151,6 @@ class SOSILoader:
                 )
                 .execute()
             )
-            print(f"Uploaded {file_name} to {target_path} (ID: {file.get('id')})")
             return file.get("id")
         except Exception as e:
             print(f"Failed to upload {file_name}: {e}")

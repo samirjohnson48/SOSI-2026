@@ -52,11 +52,22 @@ class SOSIAuthenticator:
 
     # TODO: Better error handling with credentials and environment variables
     def _get_google_oauth_credentials(self) -> Credentials:
+        creds = {
+            "refresh_token": os.getenv(self.refresh_token_env_var),
+            "client_id": os.getenv(self.client_id_env_var),
+            "client_secret": os.getenv(self.client_secret_env_var),
+        }
+        missing = [k for k, v in creds.items() if v is None]
+        if missing:
+            raise ValueError(
+                f"Environment variables not set for Google OAuth credentials: {', '.join(missing)}"
+            )
+
         return Credentials(
             token=None,
-            refresh_token=os.getenv(self.refresh_token_env_var),
-            client_id=os.getenv(self.client_id_env_var),
-            client_secret=os.getenv(self.client_secret_env_var),
+            refresh_token=creds["refresh_token"],
+            client_id=creds["client_id"],
+            client_secret=creds["client_secret"],
             token_uri="https://oauth2.googleapis.com/token",
         )
 
