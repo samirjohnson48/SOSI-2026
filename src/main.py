@@ -50,16 +50,23 @@ def main():
     # ---------- EXTRACTION ----------
     logger.info("---------- Beginning Extraction ----------")
     authenticator = SOSIAuthenticator(
-        config["authentication"]["google_api"]["cred_path_env_var"],
-        config["authentication"]["google_api"]["scopes"],
-        config["authentication"]["dropbox_api"]["key_env_var"],
-        config["authentication"]["dropbox_api"]["secret_env_var"],
-        config["authentication"]["dropbox_api"]["refresh_token_env_var"],
+        config["authentication"]["google"]["service_account"]["cred_path_env_var"],
+        config["authentication"]["google"]["oauth"]["client_id_env_var"],
+        config["authentication"]["google"]["oauth"]["client_secret_env_var"],
+        config["authentication"]["google"]["oauth"]["refresh_token_env_var"],
     )
-    drive_service = authenticator.get_google_service(service_name="drive")
-    sheets_service = authenticator.get_google_service(service_name="sheets")
+    extract_drive_service = authenticator.get_google_service(
+        service_name="drive",
+        scopes=config["authentication"]["google"]["service_account"]["scopes"]["drive"],
+    )
+    sheets_service = authenticator.get_google_service(
+        service_name="sheets",
+        scopes=config["authentication"]["google"]["service_account"]["scopes"][
+            "sheets"
+        ],
+    )
     extractor = SOSIExtractor(
-        drive_service=drive_service,
+        drive_service=extract_drive_service,
         sheets_service=sheets_service,
         save_files=args.save_files,
         remove_cache=args.remove_cache,
@@ -176,11 +183,12 @@ def main():
         figures[figure_name] = fig
 
     # ---------- LOADING ----------
-    dbx = authenticator.get_dropbox_client()
+    load_drive_service = authenticator.get_google_service(
+        service_name="drive", creds_type="oauth"
+    )
     loader = SOSILoader(
-        dbx,
-        table_extension=config["loading"]["table_extension"],
-        figure_extension=config["loading"]["figure_extension"],
+        drive_service=load_drive_service,
+        folder_id=config["loading"]["folder_id"],
         branch_env_var=config["loading"]["branch_env_var"],
     )
 
@@ -188,15 +196,22 @@ def main():
     for table_type, tbls in tables.items():
         match table_type:
             case "computed" | "output":
-                loader.upload_tables(tbls, table_type, config["version"])
+                loader.upload_tables(
+                    tbls,
+                    config["loading"]["tables"]["extension"],
+                    table_type,
+                    config["version"],
+                    config["loading"]["tables"]["save_index"],
+                )
             case _:
                 continue
 
     # Load figures
     loader.upload_figures(
         figures,
+        config["loading"]["figures"]["extension"],
+        config["loading"]["figures"]["dpi"],
         config["version"],
-        config["loading"]["dpi"],
     )
 
 

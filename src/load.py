@@ -5,7 +5,8 @@ Class used to load data into dropbox folder
 import io
 import logging
 import pandas as pd
-import dropbox
+from googleapiclient.discovery import Resource
+from googleapiclient.http import MediaIoBaseUpload
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from tqdm import tqdm
@@ -17,26 +18,67 @@ logger = logging.getLogger(__name__)
 
 
 class SOSILoader:
+    MIME_TYPES = {
+        "folder": "application/vnd.google-apps.folder",
+        "csv": "text/csv",
+        "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "xls": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "pdf": "application/pdf",
+        "png": "image/png",
+        "parquet": "application/octet-stream",
+    }
+
     def __init__(
         self,
-        dbx: dropbox.Dropbox,
-        table_extension: str,
-        figure_extension: str,
+        drive_service: Resource,
+        folder_id: str,
         branch_env_var: str | None = None,
     ):
-        self.dbx = dbx
-        self.table_extension = table_extension
-        self.figure_extension = figure_extension
-        self.branch = get_branch(branch_env_var).replace("/", "_")
+        self.service: Any = drive_service
+        self.folder_id = folder_id
+        self.branch = get_branch(branch_env_var)
 
-    def _upload_table(
+    def _get_or_create_folder(self, folder_name: str, parent_id: str) -> str:
+        folder_mime_type = self.MIME_TYPES["folder"]
+        query = f"name = '{folder_name}' and mimeType = '{folder_mime_type}' and trashed = false and '{parent_id}' in parents"
+
+        results = (
+            self.service.files()
+            .list(
+                q=query,
+                fields="files(id, name)",
+                spaces="drive",
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
+            )
+            .execute()
+        )
+        files = results.get("files", [])
+
+        if files:
+            return files[0]["id"]
+
+        folder_metadata = {
+            "name": folder_name,
+            "mimeType": folder_mime_type,
+            "parents": [parent_id],
+        }
+
+        new_folder = (
+            self.service.files()
+            .create(body=folder_metadata, fields="id", supportsAllDrives=True)
+            .execute()
+        )
+
+        return new_folder.get("id")
+
+    def _get_table_buffer(
         self,
         table: pd.DataFrame,
-        target_path: str,
         extension: str,
         save_index: bool,
         table_name: str = "",
-    ) -> None:
+    ) -> io.BytesIO:
         buffer = io.BytesIO()
 
         try:
@@ -50,45 +92,18 @@ class SOSILoader:
                 raise ValueError(f"Unsupported upload extension: {extension}")
 
             buffer.seek(0)
-            self.dbx.files_upload(
-                buffer.getvalue(), target_path, mode=dropbox.files.WriteMode.overwrite
-            )
-
-            logger.info(f"Successfully uploaded {table_name} to {target_path}")
-
+            return buffer
         except Exception as e:
             logger.error(f"Failed to upload {table_name} to Dropbox: {e}")
             raise
 
-    def upload_tables(
-        self,
-        tables: dict[str, pd.DataFrame],
-        table_type: str,
-        pipeline_version: str,
-        save_index=True,
-    ):
-        pbar = tqdm(
-            tables.items(), leave=False, ascii=True, colour="green", unit="table"
-        )
-        for table_name, table in pbar:
-            pbar.set_description(f"Loading {table_name}")
-            target_path = f"/{self.branch}/{pipeline_version}/tables/{table_type}/{table_name}.{self.table_extension}"
-            self._upload_table(
-                table,
-                target_path,
-                self.table_extension,
-                save_index,
-                table_name=table_name,
-            )
-
-    def _upload_figure(
+    def _get_figure_buffer(
         self,
         figure: Figure,
-        target_path: str,
         extension: str,
         dpi: int = 300,
         figure_name: str = "",
-    ) -> None:
+    ) -> io.BytesIO:
         buffer = io.BytesIO()
 
         try:
@@ -97,25 +112,76 @@ class SOSILoader:
             )
 
             buffer.seek(0)
-            self.dbx.files_upload(
-                buffer.getvalue(), target_path, mode=dropbox.files.WriteMode.overwrite
-            )
-
-            logger.info(f"Successfully uploaded figure {figure_name} to {target_path}")
-
         except Exception as e:
             logger.error(f"Failed to upload figure {figure_name} to Dropbox: {e}")
             raise
 
         finally:
             plt.close(figure)
-            buffer.close()
+
+        return buffer
+
+    def _upload_buffer(self, buffer: io.BytesIO, target_path: str, mime_type: str):
+        parts = target_path.strip("/").split("/")
+        folder_parts = parts[:-1]
+        file_name = parts[-1]
+
+        current_parent_id = self.folder_id
+        for folder_name in folder_parts:
+            current_parent_id = self._get_or_create_folder(
+                folder_name, current_parent_id
+            )
+
+        buffer.seek(0)
+        file_metadata = {
+            "name": file_name,
+            "parents": [current_parent_id] if current_parent_id else [],
+        }
+
+        media = MediaIoBaseUpload(buffer, mimetype=mime_type, resumable=True)
+
+        try:
+            file = (
+                self.service.files()
+                .create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields="id",
+                    supportsAllDrives=True,
+                )
+                .execute()
+            )
+            print(f"Uploaded {file_name} to {target_path} (ID: {file.get('id')})")
+            return file.get("id")
+        except Exception as e:
+            print(f"Failed to upload {file_name}: {e}")
+            raise
+
+    def upload_tables(
+        self,
+        tables: dict[str, pd.DataFrame],
+        extension: str,
+        table_type: str,
+        pipeline_version: str,
+        save_index: bool = True,
+    ):
+        pbar = tqdm(
+            tables.items(), leave=False, ascii=True, colour="green", unit="table"
+        )
+        for table_name, table in pbar:
+            pbar.set_description(f"Loading {table_name}")
+            target_path = f"/{self.branch}/{pipeline_version}/tables/{table_type}/{table_name}.{extension}"
+            buffer = self._get_table_buffer(table, extension, save_index, table_name)
+            self._upload_buffer(
+                buffer, target_path, self.MIME_TYPES.get(extension.lower(), "text/csv")
+            )
 
     def upload_figures(
         self,
         figures: dict[str, Any],
-        pipeline_version: str,
+        extension: str,
         dpi: int,
+        pipeline_version: str,
     ):
         content_pbar = tqdm(
             figures.items(), leave=False, ascii=True, colour="green", unit="figure"
@@ -133,12 +199,18 @@ class SOSILoader:
                 for fig_name, fig in fig_pbar:
                     name_to_save = fig_name.lower().replace(" ", "_")
                     fig_pbar.set_description(f"Loading {fig_name}")
-                    target_path = f"/{self.branch}/{pipeline_version}/figures/{content_name}/{name_to_save}.{self.figure_extension}"
-                    self._upload_figure(
-                        fig, target_path, self.figure_extension, dpi, fig_name
+                    target_path = f"/{self.branch}/{pipeline_version}/figures/{content_name}/{name_to_save}.{extension}"
+                    buffer = self._get_figure_buffer(fig, extension, dpi, fig_name)
+                    self._upload_buffer(
+                        buffer,
+                        target_path,
+                        self.MIME_TYPES.get(extension.lower(), "image/png"),
                     )
             else:
-                target_path = f"/{self.branch}/{pipeline_version}/figures/{content_name}.{self.figure_extension}"
-                self._upload_figure(
-                    contents, target_path, self.figure_extension, dpi, content_name
+                target_path = f"/{self.branch}/{pipeline_version}/figures/{content_name}.{extension}"
+                buffer = self._get_figure_buffer(contents, extension, dpi, content_name)
+                self._upload_buffer(
+                    buffer,
+                    target_path,
+                    self.MIME_TYPES.get(extension.lower(), "image/png"),
                 )

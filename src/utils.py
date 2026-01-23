@@ -109,9 +109,9 @@ def get_branch(branch_env_var: str | None) -> str:
     if branch_env_var:
         branch = os.getenv(branch_env_var)
         if branch is not None:
-            return branch
+            return branch.replace("/", "_")
     try:
-        return f"local/{os.getlogin()}"
+        return f"local/{os.getlogin().replace('/', '_')}"
     except OSError:
         branch = os.getenv("USER", os.getenv("USERNAME"))
-        return f"local/{branch}" if branch is not None else "local"
+        return f"local/{branch.replace('/', '_')}" if branch is not None else "local"

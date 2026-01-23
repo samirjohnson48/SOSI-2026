@@ -3,17 +3,20 @@ version: 1.0
 assessment_year: 2023
 
 authentication:
-  google_api:
-    api_version: v3
-    cred_path_env_var: GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
-    scopes:
-    - https://www.googleapis.com/auth/drive.readonly
-    - https://www.googleapis.com/auth/spreadsheets.readonly
-    service_account_email: drive-pipeline-reader@my-gcp-project.iam.gserviceaccount.com
-  dropbox_api:
-    key_env_var: DROPBOX_APP_KEY
-    secret_env_var: DROPBOX_APP_SECRET
-    refresh_token_env_var: DROPBOX_REFRESH_TOKEN
+  google:
+    service_account:
+      api_version: v3
+      cred_path_env_var: GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
+      service_account_email: drive-pipeline-reader@my-gcp-project.iam.gserviceaccount.com
+      scopes:
+        sheets: 
+          - https://www.googleapis.com/auth/spreadsheets.readonly
+        drive:
+          - https://www.googleapis.com/auth/drive.readonly
+    oauth:
+      client_id_env_var: GOOGLE_OAUTH_CLIENT_ID
+      client_secret_env_var: GOOGLE_OAUTH_SECRET
+      refresh_token_env_var: GOOGLE_OAUTH_REFRESH_TOKEN
 extraction:
   SOSI_2026_workspace:
     source_type: sheets
@@ -58,10 +61,13 @@ plotting:
   species_to_exclude: [MZZ]
   show_figure: False
 loading:
+  folder_id: 14rICsJgvdX_F6_orFH_j0jnwdD0zgwAO
   branch_env_var: BRANCH
-  table_extension: xlsx
-  figure_extension: pdf
-  dpi: 300
-  save_index: True
+  figures:
+    extension: pdf
+    dpi: 300
+  tables:
+    extension: xlsx
+    save_index: True
 
 
