@@ -64,5 +64,15 @@ status_by_landings:
     O: Unsustainable
   totals_row: True
   weight_col: landings_2023
-
+status_by_number_isscaap_code:
+  input_table: stock_assessments
+  value: status
+  by: isscaap_code
+  show_counts: True
+  show_percentages: True
+  totals_row: True
+  value_map:
+    M: Sustainable
+    U: Sustainable
+    O: Unsustainable
 
