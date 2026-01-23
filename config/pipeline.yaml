@@ -14,9 +14,7 @@ authentication:
         drive:
           - https://www.googleapis.com/auth/drive.readonly
     oauth:
-      client_id_env_var: GOOGLE_OAUTH_CLIENT_ID
-      client_secret_env_var: GOOGLE_OAUTH_CLIENT_SECRET
-      refresh_token_env_var: GOOGLE_OAUTH_REFRESH_TOKEN
+      cred_path_env_var: GOOGLE_OAUTH_CREDENTIALS_PATH
 extraction:
   SOSI_2026_workspace:
     source_type: sheets

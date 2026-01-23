@@ -29,12 +29,11 @@ jobs:
       - name: Decode and Create Google Credentials File
         run: |
           echo "${{ secrets.GSA_CREDENTIALS_BASE64 }}" | base64 --decode > gsa_credentials.json
+          echo "${{ secrets.GOAUTH_CREDENTIALS_BASE64 }} | base64 --decode > goauth_credentials.json"
 
       - name: Run SOSI Pipeline
         env:
-          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
-          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
-          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+          GOOGLE_OAUTH_CREDENTIALS_PATH: ${{ github.workspace }}/goauth_credentials.json
           GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH: ${{ github.workspace }}/gsa_credentials.json
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           BRANCH: ${{ github.head_ref || github.ref_name }}

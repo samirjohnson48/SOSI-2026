@@ -6,6 +6,7 @@ and Dropbox for loading.
 """
 
 import os
+import json
 from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build, Resource
@@ -16,25 +17,17 @@ logger = logging.getLogger(__name__)
 
 
 class SOSIAuthenticator:
-    def __init__(
-        self,
-        google_service_account_creds_env_var: str,
-        client_id_env_var: str,
-        client_secret_env_var: str,
-        refresh_token_env_var: str,
-    ):
-        self.google_service_account_creds_env_var = google_service_account_creds_env_var
-        self.client_id_env_var = client_id_env_var
-        self.client_secret_env_var = client_secret_env_var
-        self.refresh_token_env_var = refresh_token_env_var
+    def __init__(self, sa_creds_env_var: str, oauth_path_env_var: str):
+        self.sa_creds_env_var = sa_creds_env_var
+        self.oauth_path_env_var = oauth_path_env_var
 
     def _get_google_service_credentials(self, scopes: list):
         try:
-            creds_path = os.getenv(self.google_service_account_creds_env_var)
+            creds_path = os.getenv(self.sa_creds_env_var)
 
             if not creds_path:
                 raise KeyError(
-                    f"Set environment variable {self.google_service_account_creds_env_var} to point to path of Google Service Account credentials."
+                    f"Set environment variable {self.sa_creds_env_var} to point to path of Google Service Account credentials."
                 )
 
             credentials = service_account.Credentials.from_service_account_file(
@@ -52,11 +45,20 @@ class SOSIAuthenticator:
 
     # TODO: Better error handling with credentials and environment variables
     def _get_google_oauth_credentials(self) -> Credentials:
-        creds = {
-            "refresh_token": os.getenv(self.refresh_token_env_var),
-            "client_id": os.getenv(self.client_id_env_var),
-            "client_secret": os.getenv(self.client_secret_env_var),
-        }
+        creds_path = os.getenv(self.oauth_path_env_var)
+
+        if creds_path is None:
+            raise KeyError(
+                f"Environment variable {self.oauth_path_env_var} not set. Set this to point to OAuth credentials json."
+            )
+        if not os.path.exists(creds_path):
+            raise FileNotFoundError(
+                f"Could not find OAuth credentials at {creds_path}. Set environment variable {self.oauth_path_env_var} to point to the correct path."
+            )
+
+        with open(creds_path, "r") as file:
+            creds = json.load(file)
+
         missing = [k for k, v in creds.items() if v is None]
         if missing:
             raise ValueError(

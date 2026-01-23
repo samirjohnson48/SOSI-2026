@@ -51,9 +51,7 @@ def main():
     logger.info("---------- Beginning Extraction ----------")
     authenticator = SOSIAuthenticator(
         config["authentication"]["google"]["service_account"]["cred_path_env_var"],
-        config["authentication"]["google"]["oauth"]["client_id_env_var"],
-        config["authentication"]["google"]["oauth"]["client_secret_env_var"],
-        config["authentication"]["google"]["oauth"]["refresh_token_env_var"],
+        config["authentication"]["google"]["oauth"]["cred_path_env_var"],
     )
     extract_drive_service = authenticator.get_google_service(
         service_name="drive",
