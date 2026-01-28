@@ -39,7 +39,9 @@ columns:
       - ["lambda col: col.notna()", "filter"]
   fao_areas:
     dtype: object
-    from: fao_area
-    transformation: "lambda col: col.str.split(':').str[1:]"
+    from:
+      column: fao_area
+      transformation: "lambda col: col.str.split(':').str[1:].str.join(', ')"
+    transformation: "lambda col: col.str.split(', ').apply(lambda x: [int(i) for i in x])"
 primary_key: grsf_stock_id
 

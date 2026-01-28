@@ -41,6 +41,36 @@ def remove_key(d: dict, key: str | list[str]) -> dict[str, Any]:
     return {k: v for k, v in d.items() if k not in key}
 
 
+def find_table(
+    tables: dict[str, dict[str, pd.DataFrame]],
+    args: dict,
+    table_key: str,
+    keys_to_remove: str | list[str] | None = None,
+    pop_from_args: bool = False,
+) -> pd.DataFrame | dict[str, pd.DataFrame]:
+    tables_to_search = (
+        remove_key(tables, keys_to_remove)
+        if keys_to_remove is not None
+        else tables.copy()
+    )
+
+    table_name = args.pop(table_key) if pop_from_args else args.get(table_key)
+    if table_name is None:
+        raise KeyError(
+            f"Incorrect table key: {table_key} from args {args}. Did you mean 'input_table' or 'join_table'?"
+        )
+
+    match table_name:
+        case str():
+            return find_key(tables_to_search, table_name)
+        case list():
+            return {tn: find_key(tables_to_search, tn) for tn in table_name}
+        case _:
+            raise TypeError(
+                f"Unknown type for table name(s) {table_name} found by key {table_key} specified in args {args}"
+            )
+
+
 def add_val(og_d: dict, key: str, val: Any) -> dict[str, Any]:
     d = og_d.copy()
     if key not in d:

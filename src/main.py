@@ -23,7 +23,7 @@ from .extract import SOSIExtractor
 from .transform import SOSITransformer
 from .plot import SOSIPlotter
 from .load import SOSILoader
-from .utils import find_key, remove_key
+from .utils import find_key, remove_key, find_table
 
 
 def main():
@@ -90,7 +90,9 @@ def main():
     # ---------- TRANSFORMATION ----------
     logger.info("---------- Beginning Transformation ----------")
     transformer = SOSITransformer(
-        assessment_year=config["assessment_year"], error_log_dir=logs_dir / "error"
+        assessment_year=config["assessment_year"],
+        isscaap_to_exclude=config["transformation"]["isscaap_to_exclude"],
+        error_log_dir=logs_dir / "error",
     )
 
     # Combine stock assessments into one table to create stock reference table
@@ -154,15 +156,35 @@ def main():
 
     # Create output tables
     for table_name, params in output_tables_config.items():
-        input_table = find_key(remove_key(tables, "source"), params.pop("input_table"))
+        args = params["args"]
+        function_name = params["function"]
+        # TODO: Generalize input_table / join_table for lists/dicts resp.
+        input_table = find_table(
+            tables=tables,
+            args=args,
+            table_key="input_table",
+            keys_to_remove="source",
+            pop_from_args=True,
+        )
         join_table = (
-            find_key(remove_key(tables, "source"), params.pop("join_table"))
-            if "join_table" in params
+            find_table(
+                tables=tables,
+                args=args,
+                table_key="join_table",
+                keys_to_remove="source",
+                pop_from_args=True,
+            )
+            if "join_table" in args
             else None
         )
-        tables["output"][table_name] = transformer.compute_aggregate_table(
-            input_table=input_table, join_table=join_table, **params
+        tables["output"][table_name] = transformer.compute_table(
+            input_table=input_table,
+            join_table=join_table,
+            function_name=function_name,
+            args=args,
         )
+
+    breakpoint()
 
     # Create output plots
     plotter = SOSIPlotter(

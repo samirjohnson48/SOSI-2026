@@ -4,8 +4,9 @@ columns:
     rename: fao_area
   fao_area_label:
     dtype: string
-    from: Code
-    transformation: "lambda col: 'fao:' + col.astype('string')"
+    from: 
+      column: Code
+      transformation: "lambda col: 'fao:' + col.astype('string')"
   Name_En:
     dtype: string
     rename: fao_area_name
