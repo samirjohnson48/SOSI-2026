@@ -219,18 +219,21 @@ def main():
                     config["loading"]["tables"]["extension"],
                     table_type,
                     config["version"],
-                    config["loading"]["tables"]["save_index"],
+                    config["loading"]["tables"]
+                    .get("save_index", True)
+                    .get(table_type, True),
+                    config["loading"]["tables"].get("replace_on_exists", True),
                 )
             case _:
                 continue
 
     # Load figures
-    loader.upload_figures(
-        figures,
-        config["loading"]["figures"]["extension"],
-        config["loading"]["figures"]["dpi"],
-        config["version"],
-    )
+    # loader.upload_figures(
+    #     figures,
+    #     config["loading"]["figures"]["extension"],
+    #     config["loading"]["figures"]["dpi"],
+    #     config["version"],
+    # )
 
 
 if __name__ == "__main__":

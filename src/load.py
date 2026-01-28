@@ -10,6 +10,7 @@ from googleapiclient.http import MediaIoBaseUpload
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from tqdm import tqdm
+from datetime import datetime
 from typing import Any
 
 from .utils import get_branch
@@ -115,13 +116,80 @@ class SOSILoader:
         except Exception as e:
             logger.error(f"Failed to upload figure {figure_name} to Dropbox: {e}")
             raise
-
         finally:
             plt.close(figure)
 
         return buffer
 
-    def _upload_buffer(self, buffer: io.BytesIO, target_path: str, mime_type: str):
+    def _get_existing_file_id(
+        self, file_name: str, current_parent_id: str
+    ) -> str | None:
+        query = (
+            f"name = '{file_name}' and '{current_parent_id}' in parents "
+            + "and trashed = false"
+        )
+
+        existing_files = (
+            self.service.files()
+            .list(
+                q=query,
+                spaces="drive",
+                fields="files(id)",
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
+            )
+            .execute()
+        )
+
+        files = existing_files.get("files")
+
+        if files:
+            return files[0]["id"]
+        return None
+
+    def _upload_media(
+        self,
+        media: MediaIoBaseUpload,
+        file_name: str,
+        current_parent_id: str | None,
+        file_id: str | None = None,
+    ) -> str | None:
+        if file_id is not None:
+            file = (
+                self.service.files()
+                .update(
+                    fileId=file_id,
+                    media_body=media,
+                    fields="id",
+                    supportsAllDrives=True,
+                )
+                .execute()
+            )
+        else:
+            file_metadata = {
+                "name": file_name,
+                "parents": [current_parent_id],
+            }
+            file = (
+                self.service.files()
+                .create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields="id",
+                    supportsAllDrives=True,
+                )
+                .execute()
+            )
+
+        return file.get("id")
+
+    def _upload_buffer(
+        self,
+        buffer: io.BytesIO,
+        target_path: str,
+        mime_type: str,
+        replace_on_exists=True,
+    ):
         parts = target_path.strip("/").split("/")
         folder_parts = parts[:-1]
         file_name = parts[-1]
@@ -133,28 +201,29 @@ class SOSILoader:
             )
 
         buffer.seek(0)
-        file_metadata = {
-            "name": file_name,
-            "parents": [current_parent_id] if current_parent_id else [],
-        }
-
-        media = MediaIoBaseUpload(buffer, mimetype=mime_type, resumable=True)
+        media = MediaIoBaseUpload(
+            buffer, chunksize=-1, mimetype=mime_type, resumable=True
+        )
 
         try:
-            file = (
-                self.service.files()
-                .create(
-                    body=file_metadata,
-                    media_body=media,
-                    fields="id",
-                    supportsAllDrives=True,
+            file_id = self._get_existing_file_id(file_name, current_parent_id)
+
+            if file_id is None:
+                upload_id = self._upload_media(media, file_name, current_parent_id)
+            elif replace_on_exists:
+                upload_id = self._upload_media(
+                    media, file_name, current_parent_id, file_id
                 )
-                .execute()
-            )
-            return file.get("id")
+            else:
+                current_date = datetime.now().strftime("%Y-%m-%d")
+                name, extension = file_name.split(".")
+                fn = f"{name}_{current_date}.{extension}"
+                upload_id = self._upload_media(media, fn, current_parent_id)
         except Exception as e:
             print(f"Failed to upload {file_name}: {e}")
             raise
+
+        return upload_id
 
     def upload_tables(
         self,
@@ -163,6 +232,7 @@ class SOSILoader:
         table_type: str,
         pipeline_version: str,
         save_index: bool = True,
+        replace_on_exists: bool = True,
     ):
         pbar = tqdm(
             tables.items(), leave=False, ascii=True, colour="green", unit="table"
@@ -172,7 +242,10 @@ class SOSILoader:
             target_path = f"/{self.branch}/{pipeline_version}/tables/{table_type}/{table_name}.{extension}"
             buffer = self._get_table_buffer(table, extension, save_index, table_name)
             self._upload_buffer(
-                buffer, target_path, self.MIME_TYPES.get(extension.lower(), "text/csv")
+                buffer,
+                target_path,
+                self.MIME_TYPES.get(extension.lower(), "text/csv"),
+                replace_on_exists,
             )
 
     def upload_figures(
