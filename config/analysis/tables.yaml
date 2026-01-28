@@ -8,6 +8,7 @@ status_by_number_area:
     show_counts: True
     show_percentages: True
     totals_row: True
+    totals_label: Global
     value_map:
       M: Sustainable
       U: Sustainable
