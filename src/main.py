@@ -188,7 +188,7 @@ def main():
     plotter = SOSIPlotter(
         tables=remove_key(tables, "source"),
         assessment_year=config["assessment_year"],
-        isscaap_to_exclude=config["plotting"]["isscaap_to_exclude"],
+        isscaap_to_exclude=config["transformation"]["isscaap_to_exclude"],
         species_to_exclude=config["plotting"]["species_to_exclude"],
         show_figure=config["plotting"]["show_figure"],
     )
