@@ -1,5 +1,5 @@
 pipeline_id: sosi-2026
-version: 1.0
+version: 1.1
 assessment_year: 2023
 
 authentication:
@@ -28,6 +28,9 @@ extraction:
       area41: 
         file_name: Update_Template_SoSI2026-Area41-upd
         sheet_name: sosi2026
+      hms:
+        file_name: Update_Template_SoSI2026-HMS-upd
+        sheet_name: sosi2026
   capture_zip:
     source_type: zip
     url: https://www.fao.org/fishery/static/Data/Capture_2025.1.0.zip
@@ -54,8 +57,8 @@ transformation:
   years:
     first: 1950
     last: 2023
-plotting:
   isscaap_to_exclude: [61, 62, 63, 64, 71, 72, 73, 74, 81, 82, 83, 91, 92, 93, 94]
+plotting:
   species_to_exclude: [MZZ]
   show_figure: False
 loading:
