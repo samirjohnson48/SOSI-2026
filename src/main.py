@@ -184,8 +184,6 @@ def main():
             args=args,
         )
 
-    breakpoint()
-
     # Create output plots
     plotter = SOSIPlotter(
         tables=remove_key(tables, "source"),
