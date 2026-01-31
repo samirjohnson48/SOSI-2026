@@ -58,7 +58,7 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH: ${{ github.workspace }}/gsa_credentials.json
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           BRANCH: ${{ github.head_ref || github.ref_name }}
-          LOG_LEVEL: ${{ github.events.input.log_level || "INFO" }}
+          LOG_LEVEL: ${{ github.events.input.log_level }}
           TABLES_TO_EXTRACT: ${{ github.events.input.extract_tables }}
           FILES_TO_LOAD: ${{ github.events.input.load_files }}
         run: |
