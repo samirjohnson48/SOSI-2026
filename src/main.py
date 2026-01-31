@@ -22,6 +22,8 @@ logging.basicConfig(
     level=log_levels[os.getenv("LOG_LEVEL", "INFO")],
 )
 
+breakpoint()
+
 from .authenticate import SOSIAuthenticator
 from .extract import SOSIExtractor
 from .transform import SOSITransformer

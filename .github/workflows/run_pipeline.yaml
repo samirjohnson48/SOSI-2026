@@ -3,8 +3,12 @@ name: SOSI 2026 Data Pipeline
 on:
   workflow_dispatch:
     inputs:
+      extract_tables:
+        description: "Tables to extract from source (space-separated, or enter 'all' to extract all)"
+        required: False
+        default: ''
       load_files:
-        description: "Figures and tables to load (space-separated, or leave blank for all)"
+        description: "Figures and tables to load to drive (space-separated, or enter 'all' to load all)"
         required: False
         default: ''
       log_level:
@@ -54,13 +58,28 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           BRANCH: ${{ github.head_ref || github.ref_name }}
           LOG_LEVEL: ${{ github.events.input.log_level }}
+          TABLES_TO_EXTRACT: ${{ github.events.input.extract_tables }}
           FILES_TO_LOAD: ${{ github.events.input.load_files }}
         run: |
-          if [ -z "$FILES_TO_LOAD" ]; then
-            python -m src.main -l "$FILES_TO_LOAD"
-          else
-            python -m src.main -l
+          CMD="python -m src.main"
+
+          if [ -n "$TABLES_TO_EXTRACT" ]; then
+            if [ "{$TABLES_TO_EXTRACT,,}" == 'all' ]; then
+              CMD="$CMD -e"
+            else
+              CMD="$CMD -e $TABLES_TO_EXTRACT"
+            fi
           fi
+
+          if [ -n "$FILES_TO_LOAD" ]; then
+            if [ "${FILES_TO_LOAD,,}" == 'all' ]; then
+              CMD="$CMD -l"
+            else
+              CMD="$CMD -l $FILES_TO_LOAD"
+            fi
+          fi
+
+          $CMD
 
       - name: Upload Logs as Artifacts
         if: always() 
