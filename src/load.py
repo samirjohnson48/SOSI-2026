@@ -17,7 +17,7 @@ from typing import Any
 
 from .utils import get_branch, is_step_enabled
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__file__)
 
 
 class SOSILoader:

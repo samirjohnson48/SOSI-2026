@@ -16,8 +16,10 @@ config_dir = project_dir / "config"
 logs_dir = project_dir / "logs"
 
 logger = logging.getLogger(__name__)
+log_levels = {"DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARN": logging.WARN}
 logging.basicConfig(
-    filename=logs_dir / "SOSI.log", level=os.getenv("LOG_LEVEL", "INFO")
+    filename=logs_dir / "SOSI.log",
+    level=log_levels[os.getenv("LOG_LEVEL", "INFO")],
 )
 
 from .authenticate import SOSIAuthenticator

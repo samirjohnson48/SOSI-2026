@@ -13,7 +13,7 @@ from googleapiclient.discovery import build, Resource
 from googleapiclient.errors import HttpError
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__file__)
 
 
 class SOSIAuthenticator:

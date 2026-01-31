@@ -7,7 +7,7 @@ import os
 import argparse
 from typing import Any, Literal
 
-MergeHow = Literal["left", "right", "outer", "inner", "cross"]
+type MergeHow = Literal["left", "right", "outer", "inner", "cross"]
 
 
 def _find_key(d: dict, key: str) -> Any:
