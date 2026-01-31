@@ -32,8 +32,6 @@ logging.basicConfig(
     level=log_levels[ARGS.verbosity],
 )
 
-breakpoint()
-
 
 def main():
     """ """
