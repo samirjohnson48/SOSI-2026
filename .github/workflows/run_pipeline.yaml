@@ -18,6 +18,7 @@ on:
           - DEBUG
           - INFO
           - WARNING
+          - ERROR
         default: 'INFO'
 
 jobs:
@@ -57,7 +58,7 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH: ${{ github.workspace }}/gsa_credentials.json
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           BRANCH: ${{ github.head_ref || github.ref_name }}
-          LOG_LEVEL: ${{ github.events.input.log_level }}
+          LOG_LEVEL: ${{ github.events.input.log_level || "INFO" }}
           TABLES_TO_EXTRACT: ${{ github.events.input.extract_tables }}
           FILES_TO_LOAD: ${{ github.events.input.load_files }}
         run: |
@@ -78,6 +79,9 @@ jobs:
               CMD="$CMD -l $FILES_TO_LOAD"
             fi
           fi
+
+          if [ -n "$LOG_LEVEL" ]; then
+            CMD="$CMD -v $LOG_LEVEL"
 
           $CMD
 

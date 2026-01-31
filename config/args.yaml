@@ -20,3 +20,9 @@ output:
   help: "Save the output files locally to a directory"
   nargs: "?"
   const: "./output"
+verbosity:
+  required: False
+  abbreviation: v
+  help: "Verbosity for logger"
+  choices: ["DEBUG", "INFO", "ERROR", "WARN"]
+  default: "INFO"

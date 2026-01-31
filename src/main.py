@@ -4,25 +4,8 @@ Main file for running the SOSI 2026 ETL Pipeline
 
 import yaml
 import logging
-import os
 from pathlib import Path
 from tqdm import tqdm
-
-
-# Define directories
-src_dir = Path(__file__).resolve().parent
-project_dir = src_dir.parent
-config_dir = project_dir / "config"
-logs_dir = project_dir / "logs"
-
-logger = logging.getLogger(__name__)
-log_levels = {"DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARN": logging.WARN}
-logging.basicConfig(
-    filename=logs_dir / "SOSI.log",
-    level=log_levels[os.getenv("LOG_LEVEL", "INFO")],
-)
-
-breakpoint()
 
 from .authenticate import SOSIAuthenticator
 from .extract import SOSIExtractor
@@ -31,14 +14,29 @@ from .plot import SOSIPlotter
 from .load import SOSILoader
 from .utils import find_key, remove_key, find_table, parse_args_config
 
+# Define directories
+src_dir = Path(__file__).resolve().parent
+project_dir = src_dir.parent
+config_dir = project_dir / "config"
+logs_dir = project_dir / "logs"
+
+# Configure command line parameters
+with open(config_dir / "args.yaml", "r") as file:
+    args_config = yaml.safe_load(file)
+ARGS, ALL_FLAG = parse_args_config(args_config)
+
+logger = logging.getLogger(__name__)
+log_levels = {"DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARN": logging.WARN}
+logging.basicConfig(
+    filename=logs_dir / "SOSI.log",
+    level=log_levels[ARGS.verbosity],
+)
+
+breakpoint()
+
 
 def main():
     """ """
-    # Configure command line parameters
-    with open(config_dir / "args.yaml", "r") as file:
-        args_config = yaml.safe_load(file)
-    args, all_flag = parse_args_config(args_config)
-
     # Retrieve configuration settings
     with open(config_dir / "pipeline.yaml", "r") as file:
         config = yaml.safe_load(file)
@@ -78,8 +76,8 @@ def main():
         extracted_tables = extractor.extract_tables(
             source_info=source_info,
             source_name=source_name,
-            extract_args=args.extract,
-            extract_all_flag=all_flag,
+            extract_args=ARGS.extract,
+            extract_all_flag=ALL_FLAG,
         )
         tables["source"] |= extracted_tables
 
@@ -196,8 +194,8 @@ def main():
         fig = plotter.create_figure(
             figure_name=figure_name,
             params=params,
-            figures_to_show=args.plot,
-            show_all_flag=all_flag,
+            figures_to_show=ARGS.plot,
+            show_all_flag=ALL_FLAG,
         )
         figures[figure_name] = fig
 
@@ -224,15 +222,15 @@ def main():
                     .get("save_index", True)
                     .get(table_type, True),
                     config["loading"]["tables"].get("replace_on_exists", True),
-                    items_to_load=args.load,
-                    load_all_flag=all_flag,
+                    items_to_load=ARGS.load,
+                    load_all_flag=ALL_FLAG,
                 )
-                if args.output is not None:
+                if ARGS.output is not None:
                     loader.save_tables(
                         tables=tbls,
                         extension=config["loading"]["tables"]["extension"],
                         table_type=table_type,
-                        output_dir=args.output,
+                        output_dir=ARGS.output,
                         save_index=config["loading"]["tables"]
                         .get("save_index", True)
                         .get(table_type, True),
@@ -249,15 +247,15 @@ def main():
         config["loading"]["figures"]["extension"],
         config["loading"]["figures"]["dpi"],
         config["version"],
-        items_to_load=args.load,
-        load_all_flag=all_flag,
+        items_to_load=ARGS.load,
+        load_all_flag=ALL_FLAG,
     )
-    if args.output is not None:
+    if ARGS.output is not None:
         loader.save_figures(
             figures=figures,
             extension=config["loading"]["figures"]["extension"],
             dpi=config["loading"]["figures"]["dpi"],
-            output_dir=args.output,
+            output_dir=ARGS.output,
             replace_on_exists=config["loading"]["figures"].get(
                 "replace_on_exists", True
             ),
