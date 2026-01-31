@@ -82,6 +82,7 @@ jobs:
 
           if [ -n "$LOG_LEVEL" ]; then
             CMD="$CMD -v $LOG_LEVEL"
+          fi
 
           $CMD
 
