@@ -25,29 +25,23 @@ class SOSIExtractor:
     PROJECT_DIR = Path(__file__).resolve().parent.parent
     CACHE_DIR = PROJECT_DIR / ".cache"
     SAVE_FILE_EXTENSION = "csv"
+    EXTRACT_ALL_FLAG = "SELECT_ALL"
 
     def __init__(
         self,
         drive_service: Resource,
         sheets_service: Resource,
-        save_files: bool = False,
-        remove_cache: bool = False,
-        extract_to: Path | str = CACHE_DIR,
+        cache_dir: Path | str = CACHE_DIR,
     ):
         """
         Used to extract all necessary datasets for SOSI 2026 data processing
-        Set save_files = True if you want to keep files stored locally
-        Can specify the file path of downloaded files with extract_to
         """
         self.drive_service: Any = drive_service
         self.sheets_service: Any = sheets_service
-        self.save_files = save_files
-        self.cache_dir = Path(extract_to)
+        self.cache_dir = Path(cache_dir)
 
-        if remove_cache:
-            self._remove_cached_files(self.cache_dir)
-        if save_files:
-            os.makedirs(self.cache_dir, exist_ok=True)
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir)
 
     def _remove_cached_files(self, cache_dir: Path | str = CACHE_DIR):
         for file_path in Path(cache_dir).iterdir():
@@ -152,9 +146,7 @@ class SOSIExtractor:
         zip_in_memory.close()
 
         dfs: dict[str, pd.DataFrame] = {}
-        pbar = tqdm(tables.items(), leave=False, colour="green", ascii=True)
-        for table_name, table_info in pbar:
-            pbar.set_description(f"Extracting {table_name}")
+        for table_name, table_info in tables.items():
             dfs[table_name] = self._get_table_from_path(
                 extract_to / table_info["file_name"], remove_file=True
             )
@@ -295,13 +287,6 @@ class SOSIExtractor:
             logger.info("-> Successfully loaded data into Pandas DataFrame.")
 
             file_content.close()
-
-            if self.save_files:
-                if not table_name:
-                    raise ValueError(
-                        f"Must specify table_name for file {file_name} in order to cache."
-                    )
-                df.to_csv(self.cache_dir / f"{table_name}.csv")
             return df
 
         except FileNotFoundError as e:
@@ -321,48 +306,19 @@ class SOSIExtractor:
             logger.error("An unexpected error occurred when retrieving {table_name}: ")
             raise e
 
-    def _get_table_from_cache(
+    def _dispatch_source_extraction(
         self,
-        table_name: str,
-        cache_dir: Path,
-        file_extension: str = SAVE_FILE_EXTENSION,
-    ) -> pd.DataFrame:
-        file_name = f"{table_name}.{file_extension}"
-
-        logger.info(f"Extraction {table_name} from cache")
-
-        match file_extension:
-            case "csv":
-                return pd.read_csv(cache_dir / file_name)
-            case "xlsx":
-                return pd.read_excel(cache_dir / file_name)
-            case _:
-                raise ValueError(
-                    f"Invalid file extension {file_extension} given to retrieve table {table_name} from cache"
-                )
-
-    def extract_tables(
-        self,
-        source_info: dict,
+        source_type: str,
+        source_tables: dict,
+        source_url: str | None = None,
         source_name: str = "",
-        use_cache: bool = False,
     ) -> dict[str, pd.DataFrame]:
-        """
-        Extract table from source given the source information
-        """
-        tables: dict[str, pd.DataFrame] = {}
-        if use_cache:
-            for table_name in source_info["tables"].keys():
-                print(f"Extracting {table_name} from cache", end="\r")
-                tables[table_name] = self._get_table_from_cache(
-                    table_name, self.cache_dir
-                )
-            return tables
+        tables = {}
 
-        match source_info["source_type"]:
+        match source_type:
             case "sheets":
                 pbar = tqdm(
-                    source_info["tables"].items(),
+                    source_tables.items(),
                     leave=False,
                     colour="green",
                     ascii=True,
@@ -386,7 +342,7 @@ class SOSIExtractor:
                     )
             case "drive":
                 pbar = tqdm(
-                    source_info["tables"].items(),
+                    source_tables.items(),
                     leave=False,
                     colour="green",
                     ascii=True,
@@ -409,23 +365,107 @@ class SOSIExtractor:
                         table_name,
                     )
             case "zip":
-                if "url" not in source_info:
+                if source_url is None:
                     raise KeyError(f"'url' not specified for source {source_name}")
-                elif "tables" not in source_info:
-                    raise KeyError(f"'tables' not specified for source {source_name}")
                 tables = self._get_tables_from_zip(
-                    source_info["url"],
-                    source_info["tables"],
+                    source_url,
+                    source_tables,
                 )
             case _:
                 raise ValueError(
-                    f"Unknown source type {source_info['source_type']} specified for {source_name} in extraction."
+                    f"Unknown source type {source_type} specified for {source_name} in extraction."
                 )
 
-        if self.save_files:
+        return tables
+
+    def _get_table_from_cache(
+        self,
+        table_name: str,
+        cache_dir: Path,
+        file_extension: str = SAVE_FILE_EXTENSION,
+        table_info: dict[str, str] | None = None,
+        source_type: str | None = None,
+        source_url: str | None = None,
+        source_name: str = "",
+    ) -> pd.DataFrame:
+        file_name = f"{table_name}.{file_extension}"
+
+        logger.info(f"Extraction {table_name} from cache")
+
+        if not os.path.exists(cache_dir / file_name):
+            logger.info(f"Could not find {file_name} in cache.")
+            print(
+                f"Could not find {file_name} in cache. Retrieving from source: {source_name}",
+                end="\r",
+            )
+
+            assert table_info is not None
+            assert source_type is not None
+
+            source_table = {table_name: table_info}
+            table = self._dispatch_source_extraction(
+                source_type, source_table, source_url, source_name
+            )[table_name]
+
+            file_name = f"{table_name}.{self.SAVE_FILE_EXTENSION}"
+            table.to_csv(self.cache_dir / file_name)
+
+            return table
+
+        match file_extension:
+            case "csv":
+                return pd.read_csv(cache_dir / file_name)
+            case "xlsx":
+                return pd.read_excel(cache_dir / file_name)
+            case _:
+                raise ValueError(
+                    f"Invalid file extension {file_extension} given to retrieve table {table_name} from cache"
+                )
+
+    def extract_tables(
+        self,
+        source_info: dict,
+        source_name: str = "",
+        extract_args: list | str | None = None,
+        extract_all_flag: str = EXTRACT_ALL_FLAG,
+    ) -> dict[str, pd.DataFrame]:
+        """
+        Extract table from source given the source information
+        """
+        tables: dict[str, pd.DataFrame] = {}
+
+        if extract_args == extract_all_flag:
+            tables = self._dispatch_source_extraction(
+                source_info["source_type"],
+                source_info["tables"],
+                source_info.get("url"),
+                source_name,
+            )
             for table_name, table in tables.items():
                 table.to_csv(
                     self.cache_dir / f"{table_name}.{self.SAVE_FILE_EXTENSION}"
                 )
+        else:
+            for table_name, table_info in source_info["tables"].items():
+                if extract_args is not None and table_name in extract_args:
+                    print(
+                        f"Extracting {table_name} from source: {source_name}", end="\r"
+                    )
+                    tables[table_name] = self._dispatch_source_extraction(
+                        source_info["source_type"],
+                        {table_name: table_info},
+                        source_info.get("url"),
+                        source_name,
+                    )[table_name]
+                else:
+                    print(f"Extracting {table_name} from cache", end="\r")
+                    tables[table_name] = self._get_table_from_cache(
+                        table_name,
+                        self.cache_dir,
+                        table_info=table_info,
+                        source_type=source_info["source_type"],
+                        source_url=source_info.get("url"),
+                        source_name=source_name,
+                    )
 
         return tables

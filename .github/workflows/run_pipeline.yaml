@@ -2,10 +2,19 @@ name: SOSI 2026 Data Pipeline
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    inputs:
+      load_files:
+        description: "Figures and tables to load (space-separated, or leave blank for all)"
+        required: False
+        default: ''
+      log_level:
+        description: "Set log verbosity"
+        type: choice
+        options:
+          - DEBUG
+          - INFO
+          - WARNING
+        default: 'INFO'
 
 jobs:
   run-pipeline:
@@ -25,6 +34,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Cache Processed Tables
+          uses: actions/cache@v4
+          with:
+            path: .cache/  
+            key: tables-${{ github.ref_name }}-${{ github.run_id }}
+            restore-keys: |
+              tables-${{ github.ref_name }}-
 
       - name: Decode and Create Google Credentials File
         run: |
@@ -37,7 +53,14 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH: ${{ github.workspace }}/gsa_credentials.json
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           BRANCH: ${{ github.head_ref || github.ref_name }}
-        run: python3 -m src.main
+          LOG_LEVEL: ${{ github.events.input.log_level }}
+          FILES_TO_LOAD: ${{ github.events.input.load_files }}
+        run: |
+          if [ -z "$FILES_TO_LOAD" ]; then
+            python -m src.main -l "$FILES_TO_LOAD"
+          else
+            python -m src.main -l
+          fi
 
       - name: Upload Logs as Artifacts
         if: always() 

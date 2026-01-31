@@ -17,6 +17,7 @@ from .utils import (
     create_filter_query,
     join_tables,
     filter_top_n,
+    is_step_enabled,
 )
 
 logger = logging.getLogger(__file__)
@@ -37,19 +38,19 @@ PlotKind = Literal[
 
 
 class SOSIPlotter:
+    SHOW_ALL_FLAG_DEFAULT = "ALL"
+
     def __init__(
         self,
         tables: dict[str, dict[str, pd.DataFrame]],
         assessment_year: int,
         isscaap_to_exclude: list[int],
         species_to_exclude: list[str],
-        show_figure: bool = False,
     ):
         self.tables = tables
         self.ass_year = assessment_year
         self.isscaap_to_exclude = isscaap_to_exclude
         self.species_to_exclude = species_to_exclude
-        self.show_figure = show_figure
 
     def _create_subplot(
         self,
@@ -125,7 +126,10 @@ class SOSIPlotter:
 
     def create_figure(
         self,
+        figure_name: str,
         params: dict,
+        figures_to_show: str | list[str] | None,
+        show_all_flag: str = SHOW_ALL_FLAG_DEFAULT,
     ) -> Figure | dict[str, Figure]:
         if "groupby" in params:
             figs = {}
@@ -157,7 +161,7 @@ class SOSIPlotter:
                         **remove_key(ax_args, ["input_table", "join_table"]),
                     )
                 fig.set_tight_layout(params.get("tight_layout", False))
-                if self.show_figure:
+                if is_step_enabled(figure_name, figures_to_show, show_all_flag):
                     plt.show()
                 figs[val] = fig
             return figs

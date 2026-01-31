@@ -4,6 +4,7 @@ Utility functions
 
 import pandas as pd
 import os
+import argparse
 from typing import Any, Literal
 
 MergeHow = Literal["left", "right", "outer", "inner", "cross"]
@@ -145,3 +146,47 @@ def get_branch(branch_env_var: str | None) -> str:
     except OSError:
         branch = os.getenv("USER", os.getenv("USERNAME"))
         return f"local/{branch.replace('/', '_')}" if branch is not None else "local"
+
+
+def parse_args_config(
+    args_config: dict,
+    all_flag_default: str = "ALL",
+    all_flag_key: str = "all_flag",
+    description: str = "SOSI 2026",
+) -> tuple:
+    parser = argparse.ArgumentParser(description=description)
+
+    all_flag = (
+        args_config.pop(all_flag_key)
+        if all_flag_key in args_config
+        else all_flag_default
+    )
+
+    for arg, arg_info in args_config.items():
+        required = arg_info.pop("required", False)
+        abbr = arg_info.pop("abbreviation", None)
+        arg_name = arg if required else f"--{arg}"
+
+        if abbr:
+            parser.add_argument(arg_name, f"-{abbr}", **arg_info)
+        else:
+            parser.add_argument(arg_name, **arg_info)
+
+    args = parser.parse_args()
+
+    for k, v in vars(args).items():
+        if v == []:
+            vars(args)[k] = all_flag
+
+    return (args, all_flag)
+
+
+def is_step_enabled(
+    step_id: str,
+    selected_steps: str | list[str] | None,
+    run_all_keyword: str,
+) -> bool:
+    if selected_steps is None:
+        return False
+
+    return selected_steps == run_all_keyword or step_id in selected_steps

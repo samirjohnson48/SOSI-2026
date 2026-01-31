@@ -1,15 +1,22 @@
-save-files:
+all_flag: ALL
+extract:
   required: False
-  abbreviation: s
-  help: "Save source files to cache folder."
-  action: store_true
-use-cache:
+  abbreviation: e
+  help: "Download files from source and update them in the cache"
+  nargs: "*"
+load:
   required: False
-  abbreviation: c
-  help: "Use cached source files. Assumes cached files are saved in .cache folder"
-  action: store_true
-remove-cache:
+  abbreviation: l
+  help: "Load files into drive"
+  nargs: "*"
+plot:
   required: False
-  abbreviation: r
-  help: "Remove all files from the cache directory (.cache)"
-  action: store_true
+  abbreviation: p
+  help: "Plot figures produced"
+  nargs: "*"
+output:
+  required: False
+  abbreviation: o
+  help: "Save the output files locally to a directory"
+  nargs: "?"
+  const: "./output"

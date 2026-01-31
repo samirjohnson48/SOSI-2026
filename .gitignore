@@ -1,6 +1,7 @@
 # Folders
 __pycache__/
 utils/
+output/
 
 # Hidden folders and files
 .DS_Store
