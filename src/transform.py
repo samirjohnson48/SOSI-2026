@@ -130,8 +130,8 @@ class SOSITransformer:
             try:
                 if col in table.columns:
                     is_na = table[col].isna()
-                    result[col].loc[is_na] = eval(transformation)(
-                        table[old_col].loc[is_na]
+                    result.loc[is_na, col] = eval(transformation)(
+                        table.loc[is_na, old_col]
                     )
                 else:
                     result[col] = eval(transformation)(table[old_col])
