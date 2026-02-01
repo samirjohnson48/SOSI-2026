@@ -6,7 +6,6 @@ for analysis
 import pandas as pd
 import logging
 import os
-import warnings
 from pathlib import Path
 from typing import Any
 
@@ -92,11 +91,11 @@ class SOSITransformer:
                 # raise AssertionError(
                 #     f"Invalid primary key {primary_key} for table {table_name} based on {check_name}"
                 # )
-                warnings.warn(
+                print(
                     f"Invalid primary key {primary_key} for table {table_name} based on {check_name}"
                 )
                 if check_name == "duplicate":
-                    warnings.warn(
+                    print(
                         f"Keeping first duplicate value for primary key {primary_key}"
                     )
                     table = table.drop_duplicates(subset=primary_key, ignore_index=True)

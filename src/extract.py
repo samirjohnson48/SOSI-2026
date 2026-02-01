@@ -442,23 +442,21 @@ class SOSIExtractor:
                 source_name,
             )
             for table_name, table in tables.items():
-                table.to_csv(
-                    self.cache_dir / f"{table_name}.{self.SAVE_FILE_EXTENSION}"
-                )
+                fp = self.cache_dir / f"{table_name}.{self.SAVE_FILE_EXTENSION}"
+                table.to_csv(fp)
         else:
             for table_name, table_info in source_info["tables"].items():
                 if extract_args is not None and table_name in extract_args:
-                    print(
-                        f"Extracting {table_name} from source: {source_name}", end="\r"
-                    )
-                    tables[table_name] = self._dispatch_source_extraction(
+                    table = self._dispatch_source_extraction(
                         source_info["source_type"],
                         {table_name: table_info},
                         source_info.get("url"),
                         source_name,
                     )[table_name]
+                    fp = self.cache_dir / f"{table_name}.{self.SAVE_FILE_EXTENSION}"
+                    table.to_csv(fp)
+                    tables[table_name] = table
                 else:
-                    print(f"Extracting {table_name} from cache", end="\r")
                     tables[table_name] = self._get_table_from_cache(
                         table_name,
                         self.cache_dir,

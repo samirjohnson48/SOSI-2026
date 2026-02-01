@@ -12,7 +12,14 @@ from .extract import SOSIExtractor
 from .transform import SOSITransformer
 from .plot import SOSIPlotter
 from .load import SOSILoader
-from .utils import find_key, remove_key, find_table, parse_args_config
+from .utils import (
+    find_key,
+    is_step_enabled,
+    remove_key,
+    find_table,
+    parse_args_config,
+    is_step_enabled,
+)
 
 # Define directories
 src_dir = Path(__file__).resolve().parent
@@ -99,11 +106,7 @@ def main():
 
     # Apply schema verification and transformations from config files
     logger.info("Applying schema verification and transformations...")
-    for file_path in tqdm(
-        Path(config_dir / "schema").glob("*.yaml"),
-        desc="Schema verification and transformations",
-        leave=False,
-    ):
+    for file_path in Path(config_dir / "schema").glob("*.yaml"):
         table_name = file_path.name.split(".")[0]
         table = find_key(tables, table_name)
         if table is None:
@@ -211,18 +214,22 @@ def main():
     for table_type, tbls in tables.items():
         match table_type:
             case "computed" | "output":
-                loader.upload_tables(
-                    tbls,
-                    config["loading"]["tables"]["extension"],
-                    table_type,
-                    config["version"],
-                    config["loading"]["tables"]
-                    .get("save_index", True)
-                    .get(table_type, True),
-                    config["loading"]["tables"].get("replace_on_exists", True),
-                    items_to_load=ARGS.load,
-                    load_all_flag=ALL_FLAG,
-                )
+                tables_to_load = {
+                    k: v
+                    for k, v in tbls.items()
+                    if is_step_enabled(k, ARGS.load, ALL_FLAG)
+                }
+                if tables_to_load:
+                    loader.upload_tables(
+                        tables_to_load,
+                        config["loading"]["tables"]["extension"],
+                        table_type,
+                        config["version"],
+                        config["loading"]["tables"]
+                        .get("save_index", True)
+                        .get(table_type, True),
+                        config["loading"]["tables"].get("replace_on_exists", True),
+                    )
                 if ARGS.output is not None:
                     loader.save_tables(
                         tables=tbls,
@@ -240,14 +247,16 @@ def main():
                 continue
 
     # Load figures
-    loader.upload_figures(
-        figures,
-        config["loading"]["figures"]["extension"],
-        config["loading"]["figures"]["dpi"],
-        config["version"],
-        items_to_load=ARGS.load,
-        load_all_flag=ALL_FLAG,
-    )
+    figures_to_load = {
+        k: v for k, v in figures.items() if is_step_enabled(k, ARGS.load, ALL_FLAG)
+    }
+    if figures_to_load:
+        loader.upload_figures(
+            figures_to_load,
+            config["loading"]["figures"]["extension"],
+            config["loading"]["figures"]["dpi"],
+            config["version"],
+        )
     if ARGS.output is not None:
         loader.save_figures(
             figures=figures,

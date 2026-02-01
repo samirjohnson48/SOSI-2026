@@ -17,7 +17,7 @@ from typing import Any
 
 from .utils import get_branch, is_step_enabled
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 
 class SOSILoader:
@@ -30,9 +30,6 @@ class SOSILoader:
         "png": "image/png",
         "parquet": "application/octet-stream",
     }
-
-    LOAD_ALL_FLAG_DEFAULT = "ALL"
-
     DATE_FORMAT = "%Y-%m-%d"
 
     def __init__(
@@ -239,25 +236,20 @@ class SOSILoader:
         pipeline_version: str,
         save_index: bool = True,
         replace_on_exists: bool = True,
-        items_to_load: str | list[str] | None = None,
-        load_all_flag: str = LOAD_ALL_FLAG_DEFAULT,
     ):
         pbar = tqdm(
             tables.items(), leave=False, ascii=True, colour="green", unit="table"
         )
         for table_name, table in pbar:
-            if is_step_enabled(table_name, items_to_load, load_all_flag):
-                pbar.set_description(f"Loading {table_name}")
-                target_path = f"/{self.branch}/{pipeline_version}/tables/{table_type}/{table_name}.{extension}"
-                buffer = self._get_table_buffer(
-                    table, extension, save_index, table_name
-                )
-                self._upload_buffer(
-                    buffer,
-                    target_path,
-                    self.MIME_TYPES.get(extension.lower(), "text/csv"),
-                    replace_on_exists,
-                )
+            pbar.set_description(f"Loading {table_name}")
+            target_path = f"/{self.branch}/{pipeline_version}/tables/{table_type}/{table_name}.{extension}"
+            buffer = self._get_table_buffer(table, extension, save_index, table_name)
+            self._upload_buffer(
+                buffer,
+                target_path,
+                self.MIME_TYPES.get(extension.lower(), "text/csv"),
+                replace_on_exists,
+            )
 
     def save_tables(
         self,
@@ -288,44 +280,39 @@ class SOSILoader:
         extension: str,
         dpi: int,
         pipeline_version: str,
-        items_to_load: str | list[str] | None = None,
-        load_all_flag: str = LOAD_ALL_FLAG_DEFAULT,
         default_mime_type: str = "image/png",
     ):
         content_pbar = tqdm(
             figures.items(), leave=False, ascii=True, colour="green", unit="figure"
         )
         for content_name, contents in content_pbar:
-            if is_step_enabled(content_name, items_to_load, load_all_flag):
-                content_pbar.set_description(f"Loading {content_name}")
-                if isinstance(contents, dict):
-                    fig_pbar = tqdm(
-                        contents.items(),
-                        leave=False,
-                        ascii=True,
-                        colour="green",
-                        unit="figure",
-                    )
-                    for fig_name, fig in fig_pbar:
-                        name_to_save = fig_name.lower().replace(" ", "_")
-                        fig_pbar.set_description(f"Loading {fig_name}")
-                        target_path = f"/{self.branch}/{pipeline_version}/figures/{content_name}/{name_to_save}.{extension}"
-                        buffer = self._get_figure_buffer(fig, extension, dpi, fig_name)
-                        self._upload_buffer(
-                            buffer,
-                            target_path,
-                            self.MIME_TYPES.get(extension.lower(), default_mime_type),
-                        )
-                else:
-                    target_path = f"/{self.branch}/{pipeline_version}/figures/{content_name}.{extension}"
-                    buffer = self._get_figure_buffer(
-                        contents, extension, dpi, content_name
-                    )
+            content_pbar.set_description(f"Loading {content_name}")
+            if isinstance(contents, dict):
+                fig_pbar = tqdm(
+                    contents.items(),
+                    leave=False,
+                    ascii=True,
+                    colour="green",
+                    unit="figure",
+                )
+                for fig_name, fig in fig_pbar:
+                    name_to_save = fig_name.lower().replace(" ", "_")
+                    fig_pbar.set_description(f"Loading {fig_name}")
+                    target_path = f"/{self.branch}/{pipeline_version}/figures/{content_name}/{name_to_save}.{extension}"
+                    buffer = self._get_figure_buffer(fig, extension, dpi, fig_name)
                     self._upload_buffer(
                         buffer,
                         target_path,
                         self.MIME_TYPES.get(extension.lower(), default_mime_type),
                     )
+            else:
+                target_path = f"/{self.branch}/{pipeline_version}/figures/{content_name}.{extension}"
+                buffer = self._get_figure_buffer(contents, extension, dpi, content_name)
+                self._upload_buffer(
+                    buffer,
+                    target_path,
+                    self.MIME_TYPES.get(extension.lower(), default_mime_type),
+                )
 
     def _save_figure(
         self,
