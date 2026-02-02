@@ -361,7 +361,6 @@ class SOSITransformer:
 
         return cap
 
-    # TODO: modify for stocks which extend across multiple areas (tuna, sharks, etc.)
     def compute_species_landings(
         self,
         stock_assessments: pd.DataFrame,
@@ -414,6 +413,7 @@ class SOSITransformer:
         )
         return species_landings
 
+    # TODO: Compute landings for species not reported
     def _compute_species_landings_remainder(
         self,
         no_landings_species: pd.DataFrame,
