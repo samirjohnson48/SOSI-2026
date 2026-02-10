@@ -78,4 +78,71 @@ production_by_ocean:
         ylabel: Production (Million Tonnes)
         title: Top Ten Species Capture Production
 
+production_by_area:
+  suptitle: 
+    t: Capture Production
+    fontsize: *FIG_TITLE_FZ
+  groupby:
+    table: fao_areas
+    col: fao_area
+  subplots_args:
+    nrows: 1
+    ncols: 2
+    figsize: [*FIG_W, *FIG_H]
+    gridspec_kw:
+      width_ratios: [1,1]
+  tight_layout: True
+  axs_params:
+    total_production:
+      input_table: capture
+      x_col: year
+      y_col: production
+      join_table: 
+        - fao_areas
+        - asfis
+      join_key:
+        fao_areas: fao_area
+        asfis: asfis_code
+      filter_query: isscaap_code not in @self.isscaap_to_exclude
+      y_scale: *MT_SCALE
+      plot_args:
+        xlabel: Year
+        ylabel: Production (Million Tonnes)
+        title: Total Capture Production
+        color: *L_COLOR
+      grid_args:
+        visible: True
+        alpha: *G_ALPHA
+        linestyle: *G_LS
+    top_species_production:
+      input_table: capture
+      x_col: year
+      y_col: production
+      kind: area
+      join_table: 
+        - fao_areas
+        - asfis
+      join_key:
+        fao_areas: fao_area
+        asfis: asfis_code
+      filter_query: asfis_code not in @self.species_to_exclude
+      y_scale: *MT_SCALE
+      group_col: asfis_code
+      n_largest: 10
+      x_val_n_largest: assessment_year
+      legend_args:
+        map_col: species_name
+        fontsize: *LG_FZ
+        handlelength: *LG_HL
+        loc: *LOC
+        bbox_to_anchor: *BBOX_TO_ANCHOR
+        ncols: 2
+        frameon: False
+      plot_args:
+        xlabel: Year
+        ylabel: Production (Million Tonnes)
+        title: Top Ten Species Capture Production
+
+
+
 
