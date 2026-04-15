@@ -9,10 +9,12 @@ columns:
     dtype: string
     rename: unit
     restrictions:
-      - ['lambda col: col == "Q_tlw"', 'filter']
+      - [check_tlw, filter]
   PERIOD:
     dtype: Int64
     rename: year
+    restrictions:
+      - [not_na, filter]
   SPECIES.ALPHA_3_CODE:
     dtype: string
     rename: asfis_code
@@ -24,3 +26,5 @@ primary_key:
   - asfis_code
   - fao_area
   - year
+create_id:
+  method: uid

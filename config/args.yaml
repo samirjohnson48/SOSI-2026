@@ -4,10 +4,15 @@ extract:
   abbreviation: e
   help: "Download files from source and update them in the cache"
   nargs: "*"
-load:
+load-drive:
   required: False
   abbreviation: l
   help: "Load files into drive"
+  nargs: "*"
+load-db:
+  required: False
+  abbreviation: n
+  help: "Load files into Neon database"
   nargs: "*"
 plot:
   required: False
@@ -20,6 +25,11 @@ output:
   help: "Save the output files locally to a directory"
   nargs: "?"
   const: "./output"
+update-catch:
+  required: False
+  abbreviation: u
+  help: "Update the stock catch values in the master sheet"
+  action: store_true
 verbosity:
   required: False
   abbreviation: v

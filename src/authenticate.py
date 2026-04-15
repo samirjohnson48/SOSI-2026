@@ -11,6 +11,7 @@ from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build, Resource
 from googleapiclient.errors import HttpError
+from sqlalchemy import create_engine
 import logging
 
 logger = logging.getLogger(__file__)
@@ -121,3 +122,19 @@ class SOSIAuthenticator:
             raise e
 
         return service
+
+    def get_db_engine(self, db_env_var: str):
+        connection_str = os.getenv(db_env_var)
+
+        if connection_str is None:
+            raise KeyError(
+                f"Environment variable {db_env_var} is not set to access database url"
+            )
+
+        try:
+            return create_engine(connection_str)
+        except Exception as e:
+            print(
+                f"An error occurred when creating the DB engine at connection: {connection_str}"
+            )
+            raise e

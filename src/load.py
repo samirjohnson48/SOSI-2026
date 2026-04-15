@@ -1,21 +1,34 @@
 """
-Class used to load data into dropbox folder
+Class used to load data into Google Drive and PostgreSQL Server
 """
 
 import io
+import inspect
 import logging
 import pandas as pd
 import os
+import sys
 from googleapiclient.discovery import Resource
 from googleapiclient.http import MediaIoBaseUpload
+from googleapiclient.errors import HttpError
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from tqdm import tqdm
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
+from flask_migrate import upgrade
+from sqlalchemy import inspect as sqlinspect, text
+from sqlalchemy.orm.mapper import Mapper
+from sqlalchemy.orm.decl_api import DeclarativeAttributeIntercept
 
-from .utils import get_branch, is_step_enabled
+from .utils import get_branch
+
+project_dir = Path(__file__).resolve().parent.parent
+sys.path.append(str(project_dir))
+
+from web_app.app import create_app
+from web_app import models
 
 logger = logging.getLogger(__name__)
 
@@ -31,23 +44,40 @@ class SOSILoader:
         "parquet": "application/octet-stream",
     }
     DATE_FORMAT = "%Y-%m-%d"
+    DB_URL_ENV_VAR = "NEON_DATABASE_URL"
 
     def __init__(
         self,
-        drive_service: Resource,
-        folder_id: str,
+        drive_service_oauth: Resource,
+        drive_service_account: Resource,
+        sheets_service: Resource,
+        drive_folder_id: str,
+        db_engine: Any,
         branch_env_var: str | None = None,
     ):
-        self.service: Any = drive_service
-        self.folder_id = folder_id
+        self.drive_service_oauth: Any = drive_service_oauth
+        self.drive_service_account: Any = drive_service_account
+        self.sheets_service: Any = sheets_service
+        self.folder_id = drive_folder_id
+        self.engine = db_engine
         self.branch = get_branch(branch_env_var)
+        self.model_map = self._get_model_map()
+
+    def _get_model_map(self):
+        model_map = {}
+        for _, obj in inspect.getmembers(models):
+            if inspect.isclass(obj):
+                if hasattr(obj, "__tablename__"):
+                    model_map[obj.__tablename__] = obj
+
+        return model_map
 
     def _get_or_create_folder(self, folder_name: str, parent_id: str) -> str:
         folder_mime_type = self.MIME_TYPES["folder"]
         query = f"name = '{folder_name}' and mimeType = '{folder_mime_type}' and trashed = false and '{parent_id}' in parents"
 
         results = (
-            self.service.files()
+            self.drive_service_oauth.files()
             .list(
                 q=query,
                 fields="files(id, name)",
@@ -69,7 +99,7 @@ class SOSILoader:
         }
 
         new_folder = (
-            self.service.files()
+            self.drive_service_oauth.files()
             .create(body=folder_metadata, fields="id", supportsAllDrives=True)
             .execute()
         )
@@ -125,15 +155,15 @@ class SOSILoader:
         return buffer
 
     def _get_existing_file_id(
-        self, file_name: str, current_parent_id: str
+        self, file_name: str, current_parent_id: str | None = None
     ) -> str | None:
-        query = (
-            f"name = '{file_name}' and '{current_parent_id}' in parents "
-            + "and trashed = false"
-        )
+        query = f"name = '{file_name}' and trashed = false"
+
+        if current_parent_id is not None:
+            query += f" and '{current_parent_id}' in parents"
 
         existing_files = (
-            self.service.files()
+            self.drive_service_account.files()
             .list(
                 q=query,
                 spaces="drive",
@@ -159,7 +189,7 @@ class SOSILoader:
     ) -> str | None:
         if file_id is not None:
             file = (
-                self.service.files()
+                self.drive_service_oauth.files()
                 .update(
                     fileId=file_id,
                     media_body=media,
@@ -174,7 +204,7 @@ class SOSILoader:
                 "parents": [current_parent_id],
             }
             file = (
-                self.service.files()
+                self.drive_service_oauth.files()
                 .create(
                     body=file_metadata,
                     media_body=media,
@@ -228,9 +258,9 @@ class SOSILoader:
 
         return upload_id
 
-    def upload_tables(
+    def upload_tables_drive(
         self,
-        tables: dict[str, pd.DataFrame],
+        tables: Mapping[str, pd.DataFrame | dict[str, pd.DataFrame]],
         extension: str,
         table_type: str,
         pipeline_version: str,
@@ -241,19 +271,213 @@ class SOSILoader:
             tables.items(), leave=False, ascii=True, colour="green", unit="table"
         )
         for table_name, table in pbar:
-            pbar.set_description(f"Loading {table_name}")
-            target_path = f"/{self.branch}/{pipeline_version}/tables/{table_type}/{table_name}.{extension}"
-            buffer = self._get_table_buffer(table, extension, save_index, table_name)
-            self._upload_buffer(
-                buffer,
-                target_path,
-                self.MIME_TYPES.get(extension.lower(), "text/csv"),
-                replace_on_exists,
-            )
+            if isinstance(table, dict):
+                self.upload_tables_drive(
+                    tables=table,
+                    extension=extension,
+                    table_type=f"{table_type}/{table_name}",
+                    pipeline_version=pipeline_version,
+                    save_index=save_index,
+                    replace_on_exists=replace_on_exists,
+                )
+            else:
+                pbar.set_description(f"Loading {table_name} into drive")
+                tn_clean = table_name.lower().replace(" ", "_").replace(",", "")
+                target_path = f"/{self.branch}/{pipeline_version}/tables/{table_type}/{tn_clean}.{extension}"
+                buffer = self._get_table_buffer(
+                    table, extension, save_index, table_name
+                )
+                self._upload_buffer(
+                    buffer,
+                    target_path,
+                    self.MIME_TYPES.get(extension.lower(), "text/csv"),
+                    replace_on_exists,
+                )
+
+    def _col_to_letter(self, col: int):
+        """Converts a 0-indexed column number to a Google Sheets letter (e.g., 0 -> A)."""
+        letter = ""
+        col += 1
+        while col > 0:
+            col, remainder = divmod(col - 1, 26)
+            letter = chr(65 + remainder) + letter
+        return letter
+
+    def _resolve_column_addresses(
+        self, cols: str | list[str], file_id: str, sheet_name: str
+    ) -> str | dict[str, str]:
+        header_result = (
+            self.sheets_service.spreadsheets()
+            .values()
+            .get(spreadsheetId=file_id, range=f"'{sheet_name}'!1:1")
+            .execute()
+        )
+        headers = header_result.get("values", [])[0]
+
+        if isinstance(cols, str):
+            return self._col_to_letter(headers.index(cols))
+
+        letters = {}
+        for col in cols:
+            letters[col] = self._col_to_letter(headers.index(col))
+
+        return letters
+
+    def update_catch_col(
+        self,
+        file_name: str,
+        sheet_name: str,
+        stock_landings: pd.DataFrame,
+        assessment_year: int,
+        id_col: str = "stock_id",
+        landings_col: str = "landings",
+        catch_col: str = "catch",
+        catch_year_col: str = "catch_year",
+    ):
+        file_id = self._get_existing_file_id(file_name)
+        if file_id is None:
+            raise FileNotFoundError(f"File '{file_name}' not found in Drive.")
+
+        column_addresses = self._resolve_column_addresses(
+            [id_col, catch_col, catch_year_col], file_id, sheet_name
+        )
+        assert isinstance(column_addresses, dict)
+        id_a = column_addresses.get(id_col)
+        catch_a = column_addresses.get(catch_col)
+        catch_year_a = column_addresses.get(catch_year_col)
+
+        response = (
+            self.sheets_service.spreadsheets()
+            .values()
+            .batchGet(spreadsheetId=file_id, ranges=[f"'{sheet_name}'!{id_a}:{id_a}"])
+            .execute()
+        )
+
+        sheet_ids = response.get("valueRanges", [])[0].get("values", [])
+
+        id_map = {str(row[0]): i + 1 for i, row in enumerate(sheet_ids) if row}
+
+        updates = []
+        for _, row in stock_landings.iterrows():
+            val_id = str(row[id_col])
+            if val_id in id_map:
+                updates += [
+                    {
+                        "range": f"'{sheet_name}'!{catch_a}{id_map[val_id]}",
+                        "values": [[row[landings_col]]],
+                    },
+                    {
+                        "range": f"'{sheet_name}'!{catch_year_a}{id_map[val_id]}",
+                        "values": [[assessment_year]],
+                    },
+                ]
+
+        body = {"valueInputOption": "RAW", "data": updates}
+        try:
+            self.sheets_service.spreadsheets().values().batchUpdate(
+                spreadsheetId=file_id, body=body
+            ).execute()
+        except HttpError as e:
+            match e.status_code:
+                case 403:
+                    print(
+                        f"Must share {file_name} with service account email to update catch."
+                    )
+                case _:
+                    raise e
+
+    def sync_database_schema(self):
+        app = create_app()
+        with app.app_context():
+            try:
+                upgrade()
+            except Exception as e:
+                print(f"Error when syncing the database schema")
+                raise e
+
+    def _get_sql_dtypes(self, mapper: Mapper) -> dict:
+        dtype_map = {}
+
+        for column in mapper.attrs:
+            if hasattr(column, "columns"):
+                col_obj = column.columns[0]
+                dtype_map[column.key] = col_obj.type
+
+        return dtype_map
+
+    def _get_pk(self, mapper: Mapper) -> str:
+        return ", ".join(c.name for c in mapper.primary_key)
+
+    def _upsert_table_db(
+        self, table: pd.DataFrame, table_name: str, model: DeclarativeAttributeIntercept
+    ) -> None:
+        logger.info(f"Beginning upsert for {table_name}.")
+
+        mapper = sqlinspect(model)
+        pk = self._get_pk(mapper)
+        sql_dtypes = self._get_sql_dtypes(mapper)
+
+        valid_cols = [col for col in table.columns if col in sql_dtypes]
+        temp_table = table[valid_cols].copy()
+        temp_table_name = f"temp_{table_name}"
+
+        try:
+            with self.engine.begin() as conn:
+                temp_table.to_sql(
+                    temp_table_name,
+                    conn,
+                    if_exists="replace",
+                    index=False,
+                    dtype=sql_dtypes,
+                )
+                logger.debug(f"Temp table {temp_table_name} created.")
+
+                update_cols = [c for c in valid_cols if c != pk]
+                update_stmt = ", ".join(
+                    [f'"{c}" = EXCLUDED."{c}"' for c in update_cols]
+                )
+
+                valid_cols_str = ", ".join([f'"{c}"' for c in valid_cols])
+                upsert_query = text(f"""
+                                    INSERT INTO {table_name} ({valid_cols_str})
+                                    SELECT {valid_cols_str} FROM {temp_table_name}
+                                    ON CONFLICT ({pk})
+                                    DO UPDATE SET {update_stmt};
+                                    """)
+
+                conn.execute(upsert_query)
+                logger.info(f"Upsert for {table_name} complete.")
+
+                conn.execute(text(f"DROP TABLE {temp_table_name}"))
+                logger.debug(f"Temp table {temp_table_name} dropped.")
+        except Exception as e:
+            print(f"An error occurred when performing upsert on {table_name}")
+            raise e
+
+    def upload_tables_db(
+        self,
+        tables: dict[str, pd.DataFrame],
+    ) -> None:
+        pbar = tqdm(
+            tables.items(), leave=False, ascii=True, colour="green", unit="table"
+        )
+        for table_name, table in pbar:
+            pbar.set_description(f"Loading {table_name} into database")
+            logger.info(f"Loading {table_name} into database")
+            clean_name = table_name.lower().replace(" ", "_").replace("-", "_")
+
+            model = self.model_map.get(clean_name)
+            if model is None:
+                print(
+                    f"Model not found for table {table_name}. Cannot upload to database"
+                )
+                continue
+
+            self._upsert_table_db(table, clean_name, model)
 
     def save_tables(
         self,
-        tables: dict[str, pd.DataFrame],
+        tables: Mapping[str, pd.DataFrame | dict[str, pd.DataFrame]],
         extension: str,
         table_type: str,
         output_dir: Path | str,
@@ -267,12 +491,22 @@ class SOSILoader:
         if not os.path.exists(table_output_dir):
             os.makedirs(table_output_dir)
 
-        for table_name, table in tables.items():
-            file_name = f"{table_name}.{extension}"
-            if not replace_on_exists and (table_output_dir / file_name).is_file():
-                current_date = datetime.now().strftime(self.DATE_FORMAT)
-                file_name = f"{table_name}_{current_date}.{extension}"
-            table.to_csv(table_output_dir / file_name, index=save_index)
+        for name, content in tables.items():
+            if isinstance(content, dict):
+                self.save_tables(
+                    tables=content,
+                    extension=extension,
+                    table_type=f"{table_type}/{name}",
+                    output_dir=output_dir,
+                    save_index=save_index,
+                    replace_on_exists=replace_on_exists,
+                )
+            else:
+                file_name = f"{name}.{extension}"
+                if not replace_on_exists and (table_output_dir / file_name).is_file():
+                    current_date = datetime.now().strftime(self.DATE_FORMAT)
+                    file_name = f"{name}_{current_date}.{extension}"
+                content.to_csv(table_output_dir / file_name, index=save_index)
 
     def upload_figures(
         self,

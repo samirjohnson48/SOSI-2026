@@ -3,7 +3,7 @@ columns:
     dtype: string
     rename: asfis_code
     restrictions:
-      - ['lambda col: col.str.len().eq(3)', 'error']
+      - [check_length_3, error]
   English_name:
     dtype: string
     rename: common_name

@@ -1,0 +1,13 @@
+# Some stocks have reported landings in fishstat
+# which does not accurately represent its total landings in the area
+# Their landings are more accurately reflected in the landings of 
+# higher aggregated groups (labeled as 'NEI')
+SIX:
+  37: [PIL]
+  47: [SAA, SAE]
+PEN:
+  34: [SOP, GIT, GUS]
+MUX:
+  37: [MUT]
+JAX:
+  37: [HMM]

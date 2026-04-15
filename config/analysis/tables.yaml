@@ -1,10 +1,11 @@
 # Parameters for analysis tables
-status_by_number_area:
+status_by_number_sosi-grouping:
   function: compute_aggregate_table
   args:
     input_table: stock_assessments
     value: status
-    by: fao_area_label
+    by: sosi_grouping
+    filter_query: 'sosi_edition == 2026'
     show_counts: True
     show_percentages: True
     totals_row: True
@@ -19,9 +20,27 @@ status_by_number_tier:
     input_table: stock_assessments
     value: status
     by: tier
+    filter_query: 'sosi_edition == 2026'
     show_counts: True
     show_percentages: True
     totals_row: True
+    totals_label: Global
+    value_map:
+      M: Sustainable
+      U: Sustainable
+      O: Unsustainable
+status_by_number_tier_sosi-grouping:
+  function: compute_aggregate_table
+  args: 
+    input_table: stock_assessments
+    value: status
+    by: sosi_grouping
+    top_level: tier
+    filter_query: 'sosi_edition == 2026'
+    show_counts: True
+    show_percentages: True
+    totals_row: True
+    totals_label: Global
     value_map:
       M: Sustainable
       U: Sustainable
@@ -30,64 +49,182 @@ status_by_number_ocean:
   function: compute_aggregate_table
   args:
     input_table: stock_assessments
-    join_table: fao_areas
-    join_key: fao_area_label
+    join_key: sosi_grouping
     value: status
     by: ocean
+    filter_query: 'sosi_edition == 2026'
     show_counts: True
     show_percentages: True
     totals_row: False
+    totals_label: Global
     value_map:
       M: Sustainable
       U: Sustainable
       O: Unsustainable
-status_by_tier_area:
-  function: compute_aggregate_table
-  args:
-    input_table: stock_assessments
-    value: status
-    by: fao_area_label
-    show_counts: False
-    show_percentages: True
-    value_map:
-      M: Sustainable
-      U: Sustainable
-      O: Unsustainable
-    totals_row: True
-    weight_col: tier
-    weight_map:
-      1: 1
-      2: 0.5
-      3: 0.25
-status_by_landings:
+status_by_landings_sosi-grouping:
   function: compute_aggregate_table
   args: 
     input_table: stock_landings
     join_table: stock_assessments
-    join_key: grsf_stock_id
+    join_key: uid
     value: status
-    by: fao_area_label
-    show_counts: False
+    by: sosi_grouping
+    filter_query: 'sosi_edition == 2026'
+    show_counts: True
     show_percentages: True
+    show_counts_total: True
+    counts_scale: 1e-6
+    counts_name: Landings (MT)
     value_map:
       M: Sustainable
       U: Sustainable
       O: Unsustainable
     totals_row: True
-    weight_col: landings_2023
+    totals_label: Global
+    weight_col: landings
+status_by_landings_fao-area:
+  function: compute_status_by_area
+  args: 
+    input_table: stock_assessments
+    join_table: species_landings_mod
+    value: status
+    by: fao_area
+    filter_query: 'sosi_edition == 2026'
+    show_counts: True
+    show_percentages: True
+    show_counts_total: True
+    counts_scale: 1e-6
+    counts_name: Landings (MT)
+    value_map:
+      M: Sustainable
+      U: Sustainable
+      O: Unsustainable
+    totals_row: True
+    totals_label: Global
+    weight_col: landings
 percent_coverage_area:
   function: compute_percent_coverage
   args:
-    input_table: [species_landings, capture, asfis]
+    input_table: [species_landings_mod, capture, asfis]
     group_col: fao_area
+    sosi_edition: 2026
     scale: 1e-6
 percent_coverage_ocean:
   function: compute_percent_coverage
   args:
-    input_table: [species_landings, capture, asfis, fao_areas]
+    input_table: [species_landings_mod, capture, asfis, fao_areas]
     group_col: ocean
+    sosi_edition: 2026
     scale: 1e-6
-
-
-
-
+percent_coverage_rfmo:
+  function: compute_percent_coverage_rfmo
+  args:
+    input_table: capture
+    join_table: asfis
+    managed_isscaap: [36, 38]
+    scale: 1e-6
+    fao_area_managed_map:
+      21: 1
+      27: 1
+      31: 1
+      34: 1
+      37: 1
+      41: 1
+      47: 0.5
+      48: 1
+      51: 0.5
+      57: 0.5
+      58: 1
+      61: 0.5
+      67: 1
+      71: 0.5
+      77: 1
+      81: 1
+      87: 0.5
+      88: 1
+appendix_landings:
+  function: compute_appendix_landings
+  args:
+    input_table: [stock_assessments, species_landings, capture, aquaculture]
+    join_table: [asfis, countries]
+    scale: 1e-3
+    sosi_edition: 2026
+status_top10_species_area:
+  function: compute_status_top_species
+  args:
+    input_table: stock_assessments
+    join_table: stock_landings
+    n: 10
+    by: sosi_grouping
+    filter_query: 'sosi_edition == 2026'
+status_top10_species_global:
+  function: compute_status_top_species
+  args:
+    input_table: stock_assessments
+    join_table: stock_landings
+    n: 10
+    filter_query: 'sosi_edition == 2026'
+status_top10_spp_global:
+  function: compute_status_top_species
+  args:
+    input_table: stock_assessments
+    join_table: stock_landings
+    n: 10
+    filter_query: 'sosi_edition == 2026 and taxonomic_code.str.contains("X")'
+comparison_percent_coverage_area:
+  function: compute_percent_coverage
+  args:
+    input_table: [species_landings_mod, capture, asfis]
+    group_col: fao_area
+    scale: 1e-6
+    sosi_edition: [2025, 2026]
+comparison_status_by_number_area:
+  function: compute_aggregate_table
+  args: 
+    input_table: stock_assessments
+    value: status
+    by: sosi_grouping
+    top_level: sosi_edition
+    show_counts: True
+    show_percentages: True
+    totals_row: True
+    totals_label: Global
+    value_map:
+      M: Sustainable
+      U: Sustainable
+      O: Unsustainable
+comparison_status_by_number_tier:
+  function: compute_aggregate_table
+  args: 
+    input_table: stock_assessments
+    value: status
+    by: tier
+    top_level: sosi_edition
+    show_counts: True
+    show_percentages: True
+    totals_row: True
+    totals_label: Global
+    value_map:
+      M: Sustainable
+      U: Sustainable
+      O: Unsustainable
+comparison_status_by_landings:
+  function: compute_aggregate_table
+  args:
+    input_table: stock_landings
+    join_table: stock_assessments
+    join_key: uid
+    value: status
+    by: sosi_grouping
+    top_level: sosi_edition
+    show_counts: True
+    show_percentages: True
+    show_counts_total: True
+    counts_scale: 1e-6
+    counts_name: Landings (MT)
+    value_map:
+      M: Sustainable
+      U: Sustainable
+      O: Unsustainable
+    totals_row: True
+    weight_col: landings

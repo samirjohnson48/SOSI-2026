@@ -3,11 +3,15 @@ Utility functions
 """
 
 import pandas as pd
+import numpy as np
 import os
 import argparse
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
+from textwrap import wrap
 
 type MergeHow = Literal["left", "right", "outer", "inner", "cross"]
+K = TypeVar("K")
+V = TypeVar("V")
 
 
 def _find_key(d: dict, key: str) -> Any:
@@ -40,6 +44,12 @@ def remove_key(d: dict, key: str | list[str]) -> dict[str, Any]:
     if isinstance(key, str):
         return {k: v for k, v in d.items() if k != key}
     return {k: v for k, v in d.items() if k not in key}
+
+
+def sort_dict(d: dict[K, V], order: list[K]) -> dict[K, V]:
+    priority = {key: i for i, key in enumerate(order)}
+    default = len(priority)
+    return {k: d[k] for k in sorted(d, key=lambda x: priority.get(x, default))}
 
 
 def find_table(
@@ -89,18 +99,28 @@ def create_filter_query(col: str, val: Any, operator: str = "==") -> str:
     return f"{col} {operator} {val}"
 
 
-def unique_vals(df: pd.DataFrame, col: str | list[str], dropna: bool = True) -> list:
+def unique_vals(
+    df: pd.DataFrame,
+    col: str | list[str],
+    dropna: bool = True,
+    vals_to_exclude: Any | list[Any] | None = None,
+) -> list:
     base_df = df.dropna() if dropna else df
     if isinstance(col, str):
-        return list(base_df[col].unique())
+        u_vals = list(base_df[col].unique())
+        if vals_to_exclude is not None:
+            vte = set(vals_to_exclude)
+            uv = set(u_vals)
+            return list(uv - vte)
     return list(base_df[col].drop_duplicates().values)
 
 
 def join_tables(
     df: pd.DataFrame,
     join_table: pd.DataFrame | dict[str, pd.DataFrame],
-    join_key: str | list[str] | dict[str, str] | dict[str, list[str]],
+    join_key: str | list[str] | dict[str, list[str] | str],
     how: MergeHow = "left",
+    suffixes: tuple[str, str] = ("_x", "_y"),
 ) -> pd.DataFrame:
     result: pd.DataFrame
     if isinstance(join_table, dict):
@@ -116,9 +136,11 @@ def join_tables(
             )
         result = df.copy()
         for table_name, table in join_table.items():
-            result = pd.merge(result, table, on=join_key[table_name], how=how)
+            result = pd.merge(
+                result, table, on=join_key[table_name], how=how, suffixes=suffixes
+            )
     elif isinstance(join_table, pd.DataFrame) and isinstance(join_key, (str, list)):
-        result = pd.merge(df, join_table, on=join_key, how=how)
+        result = pd.merge(df, join_table, on=join_key, how=how, suffixes=suffixes)
 
     return result
 
@@ -172,7 +194,7 @@ def parse_args_config(
         else:
             parser.add_argument(arg_name, **arg_info)
 
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
 
     for k, v in vars(args).items():
         if v == []:
@@ -190,3 +212,159 @@ def is_step_enabled(
         return False
 
     return selected_steps == run_all_keyword or step_id in selected_steps
+
+
+def resolve_config_variables(obj: Any, ax_args: dict) -> dict:
+    for key, value in ax_args.items():
+        if isinstance(value, str) and value.startswith("@self."):
+            attr_name = value.replace("@self.", "")
+            ax_args[key] = getattr(obj, attr_name, value)
+        elif isinstance(value, dict):
+            ax_args[key] = resolve_config_variables(obj, value)
+    return ax_args
+
+
+def wrap_text(text: str, width: int, wrap_char: str = "\n") -> str:
+    return wrap_char.join(wrap(text, width=width))
+
+
+def broadcast_df(
+    df1: pd.DataFrame,
+    df2: pd.DataFrame,
+    level: int | str,
+    operation: Literal["add", "subtract"],
+    set_level_vals: dict[str, str] | None = None,
+    fill_value: int | float = 0,
+) -> pd.DataFrame:
+    temp = df2.groupby(level=level).sum()
+    temp_broadcasted = temp.reindex(df1.index, level=level)
+
+    result = getattr(df1, operation)(temp_broadcasted, fill_value=fill_value)
+
+    if set_level_vals and isinstance(result.index, pd.MultiIndex):
+        idx_df = result.index.to_frame()
+        for lvl_name, new_val in set_level_vals.items():
+            if lvl_name in idx_df.columns:
+                idx_df[lvl_name] = new_val
+        result.index = pd.MultiIndex.from_frame(idx_df)
+
+    return result
+
+
+def _get_fill_val(s: pd.Series) -> int | str:
+    return 0 if pd.api.types.is_numeric_dtype(s.dtype) else ""
+
+
+def sort_df(
+    df: pd.DataFrame,
+    order: dict[Any, int],
+    level: int | str | None = None,
+    col: Any | None = None,
+    sort_by: str | list[str] | None = None,
+) -> pd.DataFrame:
+    if level is None and col is None:
+        raise ValueError("Must specify either level or col to identify 'order' rows.")
+
+    label_values = df.index.get_level_values(level) if level is not None else df[col]
+
+    primary_key = pd.Series(label_values).map(lambda x: order.get(x, 0)).to_numpy()
+
+    keys_to_sort = []
+    if sort_by is not None:
+        if isinstance(sort_by, str):
+            sort_by = [sort_by]
+        for name in reversed(sort_by):
+            if name in df.index.names:
+                v = df.index.get_level_values(name)
+            elif name in df.columns:
+                v = df[name]
+            else:
+                raise KeyError(f"'{name}' not found in index levels or columns.")
+
+            v_series = pd.Series(v)
+            keys_to_sort.append(pd.Series(v).fillna(_get_fill_val(v_series)).to_numpy())
+    else:
+        v_series = pd.Series(label_values)
+        keys_to_sort.append(v_series.fillna(_get_fill_val(v_series)).to_numpy())
+
+    keys_to_sort.append(primary_key)
+
+    indexer = np.lexsort(keys_to_sort)
+    return df.iloc[indexer]
+
+
+def split_by_suffix(
+    data_map: dict[str, pd.DataFrame], suffix: str
+) -> (
+    tuple[dict[str, pd.DataFrame], dict[str, pd.DataFrame]]
+    | tuple[pd.DataFrame, pd.DataFrame]
+):
+    """
+    Splits a dictionary into two based on a suffix,
+    sharing keys that do not have a suffixed counterpart.
+    """
+    suffixed_data = {}
+    base_data = {}
+
+    suffixed_keys = {k for k in data_map if k.endswith(suffix)}
+    suffix_mapping = {k.removesuffix(suffix): k for k in suffixed_keys}
+
+    for key, df in data_map.items():
+        if key in suffixed_keys:
+            suffixed_data[key] = df
+        elif key in suffix_mapping:
+            base_data[key] = df
+        else:
+            base_data[key] = df
+            suffixed_data[key] = df
+
+    if len(base_data) == 1 and len(suffixed_data) == 1:
+        return list(base_data.values())[0], list(suffixed_data.values())[0]
+
+    return base_data, suffixed_data
+
+
+def make_series_unique(s: pd.Series) -> pd.Series:
+    """
+    Appends a count to duplicate strings (e.g., 'name', 'name 1', 'name 2').
+    """
+    counts = s.groupby(s).cumcount()
+    suffix = counts.map(lambda x: f" {x}" if x > 0 else "")
+    return s.astype(str) + suffix
+
+
+def order_columns(
+    df: pd.DataFrame, value_order: list[Any] | None = None, total_label: str = "Total"
+) -> pd.DataFrame:
+    """
+    Sets the innermost column level to a Categorical type to enforce
+    total_label first, followed by value_order.
+    """
+    assert isinstance(df.columns, pd.MultiIndex)
+
+    inner_level_values = df.columns.get_level_values(-1).unique()
+    if value_order is None:
+        value_order = [v for v in inner_level_values if v != total_label]
+
+    full_order = [total_label] + list(value_order)
+
+    new_levels = [
+        pd.Categorical(level, categories=full_order, ordered=True)
+        if i == len(df.columns.levels) - 1
+        else level
+        for i, level in enumerate(df.columns.levels)
+    ]
+
+    df.columns = df.columns.set_levels(new_levels)
+
+    return df.sort_index(axis=1)
+
+
+def find_by_attribute(
+    module: Any, attr_name: str, get_attr_name: bool = False
+) -> list[str]:
+    return [
+        getattr(obj, attr_name) if get_attr_name else name
+        for name, obj in vars(module).items()
+        if hasattr(obj, attr_name)
+    ]
