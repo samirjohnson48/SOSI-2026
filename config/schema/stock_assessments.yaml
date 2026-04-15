@@ -1,0 +1,58 @@
+# value_set_columns:
+#   sosi_record_type:
+#     value: SoSIndex
+columns:
+  stock_id:
+    dtype: string
+  sosi_grouping:
+    dtype: string
+  isscaap_code:
+    dtype: Int64
+  asfis_code:
+    rename: asfis_codes
+    dtype: object
+    transformation:
+      - clean_asfis_code
+      - strip_list
+    restrictions:
+      - [not_na, error]
+  common_name:
+    dtype: string
+  species_name:
+    rename: species_names
+    dtype: object
+    transformation:
+      - clean_species_name
+      - strip_list
+  location:
+    dtype: string
+  status_year:
+    dtype: Int64
+  tier:
+    dtype: Int64
+  status:
+    dtype: string
+  uncertainty:
+    dtype: string
+  fao_areas:
+    dtype: object
+    from:
+      column: [fao_area, subarea_description]
+      transformation: create_fao_areas
+  Ocean:
+    dtype: string
+    rename: ocean
+  # unit_update:
+  #   dtype: bool
+  #   transformation: fill_na_true
+  sosi_edition:
+    dtype: Int64
+  sosi_record_type:
+    dtype: string
+primary_key: uid
+# create_id:
+#   base: grsf_stock_id
+#   mask:
+#     column: unit_update
+#   method: uid
+

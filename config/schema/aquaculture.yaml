@@ -14,6 +14,8 @@ columns:
   PERIOD:
     dtype: Int64
     rename: year
+    restrictions:
+      - [not_na, filter]
   SPECIES.ALPHA_3_CODE:
     dtype: string
     rename: asfis_code
@@ -26,3 +28,5 @@ primary_key:
   - environment_code
   - fao_area
   - year
+create_id:
+  method: uid

@@ -2,11 +2,6 @@ columns:
   Code:
     dtype: Int64
     rename: fao_area
-  fao_area_label:
-    dtype: string
-    from: 
-      column: Code
-      transformation: "lambda col: 'fao:' + col.astype('string')"
   Name_En:
     dtype: string
     rename: fao_area_name
@@ -16,6 +11,11 @@ columns:
   FARegion_Group_En:
     dtype: string
     rename: region
+  sosi_grouping:
+    dtype: string
+    from:
+      column: Code
+      transformation: create_sosi_grouping
 primary_key:
   - fao_area
 

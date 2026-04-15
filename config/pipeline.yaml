@@ -1,6 +1,7 @@
 pipeline_id: sosi-2026
-version: 1.1
+version: 2.2
 assessment_year: 2023
+previous_assessment_year: 2021
 
 authentication:
   google:
@@ -10,7 +11,7 @@ authentication:
       service_account_email: drive-pipeline-reader@my-gcp-project.iam.gserviceaccount.com
       scopes:
         sheets: 
-          - https://www.googleapis.com/auth/spreadsheets.readonly
+          - https://www.googleapis.com/auth/spreadsheets
         drive:
           - https://www.googleapis.com/auth/drive.readonly
     oauth:
@@ -19,18 +20,70 @@ extraction:
   SOSI_2026_workspace:
     source_type: sheets
     tables:
-      area27:
-        file_name: Update_Template_SoSI2026-Area27-upd
+      sosi2026:
+        file_name: Update_Template_SoSI2026-Master-upd
         sheet_name: sosi2026
-      area31:
-        file_name: Update_Template_SoSI2026-Area31-upd
-        sheet_name: sosi2026
-      area41: 
-        file_name: Update_Template_SoSI2026-Area41-upd
-        sheet_name: sosi2026
-      hms:
-        file_name: Update_Template_SoSI2026-HMS-upd
-        sheet_name: sosi2026
+      sosi2025:
+        file_name: Update_Template_SoSI2026-Master-upd
+        sheet_name: sosi2025
+      # INIDIVIDUAL SHEETS DEPRECATED IN FAVOR OF MASTER SHEET
+      # area21:
+      #   file_name: Update_Template_SoSI2026-Area21-upd
+      #   sheet_name: sosi2026
+      # area27:
+      #   file_name: Update_Template_SoSI2026-Area27-upd
+      #   sheet_name: sosi2026
+      # area31:
+      #   file_name: Update_Template_SoSI2026-Area31-upd
+      #   sheet_name: sosi2026
+      # area34:
+      #   file_name: Update_Template_SoSI2026-Area34-upd
+      #   sheet_name: sosi2026
+      # area37:
+      #   file_name: Update_Template_SoSI2026-Area37-upd_rev
+      #   sheet_name: sosi2026
+      # area41: 
+      #   file_name: Update_Template_SoSI2026-Area41-upd
+      #   sheet_name: sosi2026
+      # area47:
+      #   file_name: Update_Template_SoSI2026-Area47-upd
+      #   sheet_name: sosi2026
+      # area48_58_88:
+      #   file_name: Update_Template_SoSI2026-Area48-58-88-upd
+      #   sheet_name: sosi2026
+      # area51:
+      #   file_name: Update_Template_SoSI2026-Area51-upd
+      #   sheet_name: sosi2026
+      # area57:
+      #   file_name: Update_Template_SoSI2026-Area57-upd
+      #   sheet_name: sosi2026
+      # area61:
+      #   file_name: Update_Template_SoSI2026-Area61-upd
+      #   sheet_name: sosi2026
+      # area67:
+      #   file_name: Update_Template_SoSI2026-Area67-upd
+      #   sheet_name: sosi2026
+      # area71:
+      #   file_name: Update_Template_SoSI2026-Area71-upd
+      #   sheet_name: sosi2026
+      # area77:
+      #   file_name: Update_Template_SoSI2026-Area77-upd
+      #   sheet_name: sosi2026
+      # area81:
+      #   file_name: Update_Template_SoSI2026-Area81-upd
+      #   sheet_name: sosi2026
+      # area87:
+      #   file_name: Update_Template_SoSI2026-Area87-upd
+      #   sheet_name: sosi2026
+      # hms:
+      #   file_name: Update_Template_SoSI2026-HMS-upd
+      #   sheet_name: sosi2026
+      # atl_sal:
+      #   file_name: Update_Template_SoSI2026-AtlSal-upd
+      #   sheet_name: sosi2026
+      # pac_sal:
+      #   file_name: Update_Template_SoSI2026-PacSal-upd
+      #   sheet_name: sosi2026
   capture_zip:
     source_type: zip
     url: https://www.fao.org/fishery/static/Data/Capture_2025.1.0.zip
@@ -54,6 +107,33 @@ extraction:
       asfis: 
         file_name: ASFIS_sp_2025.csv
 transformation:
+  editions:
+    2026: 2023
+    2025: 2021
+  schema:
+    aquaculture:
+      file_name: aquaculture.yaml
+      key: info
+    asfis:
+      file_name: asfis.yaml
+      key: info
+    capture:
+      file_name: capture.yaml
+      key: info
+    countries:
+      file_name: countries.yaml
+      key: info
+    fao_areas:
+      file_name: fao_areas.yaml
+      key: info
+    sosi2025:
+      file_name: stock_assessments.yaml
+      key: sosi
+      stock_sheet: True
+    sosi2026:
+      file_name: stock_assessments.yaml
+      key: sosi
+      stock_sheet: True
   years:
     first: 1950
     last: 2023
@@ -64,13 +144,14 @@ plotting:
 loading:
   folder_id: 14rICsJgvdX_F6_orFH_j0jnwdD0zgwAO
   branch_env_var: BRANCH
+  db_env_var: NEON_DATABASE_URL
   figures:
     extension: pdf
     dpi: 300
   tables:
     extension: xlsx
     save_index: 
-      computed: False
+      sosi: False
       output: True
     replace_on_exists: True
 

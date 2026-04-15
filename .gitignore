@@ -1,7 +1,8 @@
 # Folders
 __pycache__/
-utils/
+local_assets/
 output/
+utils/
 
 # Hidden folders and files
 .DS_Store
@@ -14,7 +15,8 @@ output/
 logs/*
 *.log
 todo.txt
-analysis.ipynb
+scratch.ipynb
+.env
 
 # Files to keep
 !logs/.gitkeep

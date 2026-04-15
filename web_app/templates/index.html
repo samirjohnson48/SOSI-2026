@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <title>SOSI 2026</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='assets/favicon.ico') }}">
+    
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+  </head>
+  <body>
+
+    <h1>State of Stocks Index (SoSI) 2026</h1>
+    <div id="viz-container">
+      <div id="map-container">
+        <div class="loader"></div>
+        <svg id="map"></svg>
+      </div>
+
+      <div id="special-groups-container">
+    </div>
+
+    <div id="stats-container">
+      <h2 id="stats-header">Header</h2>
+      <button id="stats-toggle">X</button>
+      <div id="charts">
+          <div id="status-charts" class="charts-container"></div>
+          <div id="capture-charts" class="charts-container"></div>
+          <div id="top-species-charts" class="charts-container"></div>
+      </div>
+    </div>
+
+    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+  </body>
+</html>

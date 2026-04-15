@@ -279,7 +279,7 @@ class SOSIExtractor:
                     file_content = self._get_file_content_by_info_sheets(
                         file_id, sheet_name
                     )
-                    df = pd.read_csv(file_content)
+                    df = pd.read_csv(file_content, encoding="utf-8")
                 case _:
                     raise ValueError(
                         "service_name specified must either be 'drive' or 'sheets'"
@@ -408,7 +408,7 @@ class SOSIExtractor:
             )[table_name]
 
             file_name = f"{table_name}.{self.SAVE_FILE_EXTENSION}"
-            table.to_csv(self.cache_dir / file_name)
+            table.to_csv(self.cache_dir / file_name, index=False)
 
             return table
 
@@ -443,7 +443,7 @@ class SOSIExtractor:
             )
             for table_name, table in tables.items():
                 fp = self.cache_dir / f"{table_name}.{self.SAVE_FILE_EXTENSION}"
-                table.to_csv(fp)
+                table.to_csv(fp, index=False)
         else:
             for table_name, table_info in source_info["tables"].items():
                 if extract_args is not None and table_name in extract_args:
@@ -454,7 +454,7 @@ class SOSIExtractor:
                         source_name,
                     )[table_name]
                     fp = self.cache_dir / f"{table_name}.{self.SAVE_FILE_EXTENSION}"
-                    table.to_csv(fp)
+                    table.to_csv(fp, index=False)
                     tables[table_name] = table
                 else:
                     tables[table_name] = self._get_table_from_cache(

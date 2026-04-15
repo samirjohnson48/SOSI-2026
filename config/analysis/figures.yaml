@@ -1,13 +1,13 @@
 # Define variables to be reused in plot definitions
 variables:
-  figure_width: &FIG_W 10
-  figure_height: &FIG_H 10
-  figure_title_font_size: &FIG_TITLE_FZ 15
+  figure_width: &FIG_W 154
+  figure_height: &FIG_H 154
+  figure_title_font_size: &FIG_TITLE_FZ 7.5
   millitonnes_scale: &MT_SCALE 1e-6
   line_color: &L_COLOR black
-  legend_location: &LOC lower left
-  legend_bbox_to_anchor: &BBOX_TO_ANCHOR [0, -0.22]
-  legend_font_size: &LG_FZ 10
+  legend_location: &LOC upper center
+  legend_bbox_to_anchor: &BBOX_TO_ANCHOR [0.5, -0.05]
+  legend_font_size: &LG_FZ 7
   legend_handle_length: &LG_HL 0.6
   grid_alpha: &G_ALPHA 0.4
   grid_linestype: &G_LS --
@@ -17,16 +17,24 @@ production_by_ocean:
   suptitle: 
     t: Capture Production
     fontsize: *FIG_TITLE_FZ
+    x: 0.1
+    ha: left
   groupby:
     table: fao_areas
     col: ocean
-  subplots_args:
+  subplots:
     nrows: 1
     ncols: 2
+    figsize_unit: mm
     figsize: [*FIG_W, *FIG_H]
     gridspec_kw:
       width_ratios: [1,1]
   tight_layout: True
+  subplots_adjust:
+    top: 0.95
+    bottom: 0.7
+    right: 1
+    wspace: 0.3
   axs_params:
     total_production:
       input_table: capture
@@ -38,17 +46,33 @@ production_by_ocean:
       join_key:
         fao_areas: fao_area
         asfis: asfis_code
+      title: Total Capture Production
+      ylabel: Production (Million Tonnes)
       filter_query: isscaap_code not in @self.isscaap_to_exclude
+      caption_type: total_production
       y_scale: *MT_SCALE
+      label_peak: True
+      xtick_interval: 10
       plot_args:
-        xlabel: Year
-        ylabel: Production (Million Tonnes)
-        title: Total Capture Production
+        xlabel: ''
         color: *L_COLOR
+        label: Total Production
+        lw: 1
       grid_args:
         visible: True
         alpha: *G_ALPHA
         linestyle: *G_LS
+      legend_args:
+        bbox_to_anchor: [0, -0.2]
+        loc: lower left
+        frameon: False
+        labelspacing: 1
+        handlelength: 1.5
+        handleheight: 0.25
+      average_args:
+        window: 10
+        legend_title: Mean Production
+        unit: MT
     top_species_production:
       input_table: capture
       x_col: year
@@ -60,22 +84,118 @@ production_by_ocean:
       join_key:
         fao_areas: fao_area
         asfis: asfis_code
-      filter_query: asfis_code not in @self.species_to_exclude
+      title: Top Ten Species Capture Production
+      ylabel: Production (Million Tonnes)
+      filter_query: 'asfis_code not in @self.species_to_exclude'
       y_scale: *MT_SCALE
       group_col: asfis_code
       n_largest: 10
       x_val_n_largest: assessment_year
+      xtick_interval: 10
+      caption_type: top10_species
       legend_args:
         map_col: species_name
-        fontsize: *LG_FZ
-        handlelength: *LG_HL
-        loc: *LOC
-        bbox_to_anchor: *BBOX_TO_ANCHOR
-        ncols: 2
+        loc: upper left
+        ncol: 2
+        bbox_to_anchor: [0, -0.05]
         frameon: False
+        labelspacing: 0.75
+        handlelength: 0.6
       plot_args:
-        xlabel: Year
-        ylabel: Production (Million Tonnes)
-        title: Top Ten Species Capture Production
+        xlabel: ''
+      grid_args:
+        visible: True
+        alpha: *G_ALPHA
+        linestyle: *G_LS
+    
+
+production_by_sosi_grouping:
+  suptitle: 
+    t: Capture Production
+    fontsize: *FIG_TITLE_FZ
+    x: 0.1
+    ha: left
+  groupby:
+    table: stock_reference
+    col: sosi_grouping
+  subplots:
+    nrows: 1
+    ncols: 2
+    figsize_unit: mm
+    figsize: [*FIG_W, *FIG_H]
+    gridspec_kw:
+      width_ratios: [1,1]
+  tight_layout: True
+  subplots_adjust:
+    top: 0.95
+    bottom: 0.7
+    right: 1
+    wspace: 0.3
+  axs_params:
+    total_production:
+      input_table: capture
+      x_col: year
+      y_col: production
+      join_table: asfis
+      join_key: asfis_code
+      title: Total Capture Production
+      ylabel: Production (Million Tonnes)
+      filter_query: isscaap_code not in @self.isscaap_to_exclude
+      caption_type: total_production
+      y_scale: *MT_SCALE
+      label_peak: True
+      xtick_interval: 10
+      plot_args:
+        xlabel: ''
+        color: *L_COLOR
+        label: Total Production
+        lw: 1
+      grid_args:
+        visible: True
+        alpha: *G_ALPHA
+        linestyle: *G_LS
+      legend_args:
+        bbox_to_anchor: [0, -0.2]
+        loc: lower left
+        frameon: False
+        labelspacing: 1
+        handlelength: 1.5
+        handleheight: 0.25
+      average_args:
+        window: 10
+        legend_title: Mean Production
+        unit: MT
+    top_species_production:
+      input_table: capture
+      x_col: year
+      y_col: production
+      kind: area
+      join_table: asfis
+      join_key: asfis_code
+      title: Top Ten Species Capture Production
+      ylabel: Production (Million Tonnes)
+      filter_query: 'asfis_code not in @self.species_to_exclude'
+      y_scale: *MT_SCALE
+      group_col: asfis_code
+      n_largest: 10
+      x_val_n_largest: assessment_year
+      xtick_interval: 10
+      caption_type: top10_species
+      legend_args:
+        map_col: species_name
+        loc: upper left
+        ncol: 2
+        bbox_to_anchor: [0, -0.05]
+        frameon: False
+        labelspacing: 0.75
+        handlelength: 0.6
+      plot_args:
+        xlabel: ''
+      grid_args:
+        visible: True
+        alpha: *G_ALPHA
+        linestyle: *G_LS
+    
+
 
 
