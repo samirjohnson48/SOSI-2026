@@ -76,7 +76,7 @@ class SOSIPlotter:
 
         if fonts_path is None:
             root = Path(__file__).resolve().parent.parent
-            fonts_path = root / "fonts"
+            fonts_path = root / "assets" / "fonts"
             self.fonts = self._load_fonts(fonts_path)
 
     def _load_fonts(
