@@ -52,7 +52,7 @@ class SOSILoader:
         drive_service_account: Resource,
         sheets_service: Resource,
         drive_folder_id: str,
-        db_engine: Any,
+        db_engine: Any | None = None,
         branch_env_var: str | None = None,
     ):
         self.drive_service_oauth: Any = drive_service_oauth

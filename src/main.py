@@ -250,7 +250,11 @@ def main():
     drive_service_oauth = authenticator.get_google_service(
         service_name="drive", creds_type="oauth"
     )
-    db_engine = authenticator.get_db_engine(config["loading"]["db_env_var"])
+    db_engine = (
+        authenticator.get_db_engine(config["loading"]["db_env_var"])
+        if ARGS.load_db is not None
+        else None
+    )
     loader = SOSILoader(
         drive_service_oauth=drive_service_oauth,
         drive_service_account=drive_service_account,
