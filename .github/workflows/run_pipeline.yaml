@@ -64,7 +64,7 @@ jobs:
         run: |
           CMD="python -m src.main"
           TTE_LOWER=$(echo "$TABLES_TO_EXTRACT" | tr '[:upper:]' '[:lower:]')
-          FTL_LOWER=$(echo "$FIGURES_TO_LOAD" | tr '[:upper:]' '[:lower:]')
+          FTL_LOWER=$(echo "$FILES_TO_LOAD" | tr '[:upper:]' '[:lower:]')
 
           if [ -n "$TABLES_TO_EXTRACT" ]; then
             if [ "$TTE_LOWER" == 'all' ]; then
