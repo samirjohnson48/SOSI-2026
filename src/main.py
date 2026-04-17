@@ -2,8 +2,9 @@
 Main file for running the SOSI 2026 ETL Pipeline
 """
 
-import yaml
 import logging
+import sys
+import yaml
 from pathlib import Path
 from tqdm import tqdm
 from dotenv import load_dotenv
@@ -44,8 +45,11 @@ ARGS, ALL_FLAG = parse_args_config(args_config)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-    filename=logs_dir / "SOSI.log",
     level=getattr(logging, ARGS.verbosity),
+    handlers=[
+        logging.FileHandler(logs_dir / "SOSI.log"),
+        logging.StreamHandler(sys.stdout),
+    ],
 )
 
 
