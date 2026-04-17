@@ -1,5 +1,5 @@
 pipeline_id: sosi-2026
-version: 2.2
+version: 2.3
 assessment_year: 2023
 previous_assessment_year: 2021
 
@@ -21,69 +21,11 @@ extraction:
     source_type: sheets
     tables:
       sosi2026:
-        file_name: Update_Template_SoSI2026-Master-upd
+        file_name: SoSI2026-Master-Frozen
         sheet_name: sosi2026
       sosi2025:
-        file_name: Update_Template_SoSI2026-Master-upd
+        file_name: SoSI2026-Master-Frozen
         sheet_name: sosi2025
-      # INIDIVIDUAL SHEETS DEPRECATED IN FAVOR OF MASTER SHEET
-      # area21:
-      #   file_name: Update_Template_SoSI2026-Area21-upd
-      #   sheet_name: sosi2026
-      # area27:
-      #   file_name: Update_Template_SoSI2026-Area27-upd
-      #   sheet_name: sosi2026
-      # area31:
-      #   file_name: Update_Template_SoSI2026-Area31-upd
-      #   sheet_name: sosi2026
-      # area34:
-      #   file_name: Update_Template_SoSI2026-Area34-upd
-      #   sheet_name: sosi2026
-      # area37:
-      #   file_name: Update_Template_SoSI2026-Area37-upd_rev
-      #   sheet_name: sosi2026
-      # area41: 
-      #   file_name: Update_Template_SoSI2026-Area41-upd
-      #   sheet_name: sosi2026
-      # area47:
-      #   file_name: Update_Template_SoSI2026-Area47-upd
-      #   sheet_name: sosi2026
-      # area48_58_88:
-      #   file_name: Update_Template_SoSI2026-Area48-58-88-upd
-      #   sheet_name: sosi2026
-      # area51:
-      #   file_name: Update_Template_SoSI2026-Area51-upd
-      #   sheet_name: sosi2026
-      # area57:
-      #   file_name: Update_Template_SoSI2026-Area57-upd
-      #   sheet_name: sosi2026
-      # area61:
-      #   file_name: Update_Template_SoSI2026-Area61-upd
-      #   sheet_name: sosi2026
-      # area67:
-      #   file_name: Update_Template_SoSI2026-Area67-upd
-      #   sheet_name: sosi2026
-      # area71:
-      #   file_name: Update_Template_SoSI2026-Area71-upd
-      #   sheet_name: sosi2026
-      # area77:
-      #   file_name: Update_Template_SoSI2026-Area77-upd
-      #   sheet_name: sosi2026
-      # area81:
-      #   file_name: Update_Template_SoSI2026-Area81-upd
-      #   sheet_name: sosi2026
-      # area87:
-      #   file_name: Update_Template_SoSI2026-Area87-upd
-      #   sheet_name: sosi2026
-      # hms:
-      #   file_name: Update_Template_SoSI2026-HMS-upd
-      #   sheet_name: sosi2026
-      # atl_sal:
-      #   file_name: Update_Template_SoSI2026-AtlSal-upd
-      #   sheet_name: sosi2026
-      # pac_sal:
-      #   file_name: Update_Template_SoSI2026-PacSal-upd
-      #   sheet_name: sosi2026
   capture_zip:
     source_type: zip
     url: https://www.fao.org/fishery/static/Data/Capture_2025.1.0.zip
